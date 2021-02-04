@@ -1,6 +1,9 @@
 package failuredetector
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // EvtFailureDetector represents a Eventually Perfect Failure Detector as
 // described at page 53 in:
@@ -42,8 +45,18 @@ type EvtFailureDetector struct {
 func NewEvtFailureDetector(id int, nodeIDs []int, sr SuspectRestorer, delta time.Duration, hbSend chan<- Heartbeat) *EvtFailureDetector {
 	suspected := make(map[int]bool)
 	alive := make(map[int]bool)
-
+	
 	// TODO(student): perform any initialization necessary
+	// Setter alle nodes til alive
+	for i := 0; i < len(nodeIDs); i++ {
+		nr := nodeIDs[i]
+		alive[nr] = true
+	}
+	//print(delta)
+	
+	// Må gjøre noe med Delay
+
+	// Starttimer (delay)
 
 	return &EvtFailureDetector{
 		id:        id,
@@ -74,8 +87,17 @@ func (e *EvtFailureDetector) Start() {
 		for {
 			e.testingHook() // DO NOT REMOVE THIS LINE. A no-op when not testing.
 			select {
-			case <-e.hbIn:
+			case v := <-e.hbIn:
 				// TODO(student): Handle incoming heartbeat
+				if !v.Request {
+					e.alive[v.From] = true
+				} else {
+					// SEND HBreply out here
+					hb := Heartbeat{To: v.From, From: v.To, Request: false}
+					e.hbSend <- hb
+
+				}
+
 			case <-e.timeoutSignal.C:
 				e.timeout()
 			case <-e.stop:
@@ -98,6 +120,33 @@ func (e *EvtFailureDetector) Stop() {
 // Internal: timeout runs e's timeout procedure.
 func (e *EvtFailureDetector) timeout() {
 	// TODO(student): Implement timeout procedure
+	checkSus := false
+	for alivenode := range e.alive {
+		
+		if  ok := e.suspected[alivenode]; ok {
+			checkSus = true
+			e.delay = e.delay + e.delta
+		}
+	}
+	_ = checkSus
+	//fmt.Println(checkSus)
+	for val := range e.nodeIDs {
+		fmt.Println( val)
+		if !e.alive[val] && !e.suspected[val] {
+			e.suspected[val] = true
+			e.sr.Suspect(val)
+			// trigger suspected
+		} else if e.alive[val] && e.suspected[val] {
+			e.suspected[val] = false
+			// trigger restore
+			e.sr.Restore(val)
+		}
+		hb := Heartbeat{To: val, From: e.id, Request: true}
+		e.hbSend <- hb
+	}
+	
+	e.alive = make(map[int]bool)
+	
 }
 
 // TODO(student): Add other unexported functions or methods if needed.
