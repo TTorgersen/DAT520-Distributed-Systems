@@ -55,8 +55,9 @@ func NewEvtFailureDetector(id int, nodeIDs []int, sr SuspectRestorer, delta time
 	//print(delta)
 	
 	// Må gjøre noe med Delay
-
+	
 	// Starttimer (delay)
+	
 
 	return &EvtFailureDetector{
 		id:        id,
@@ -146,7 +147,7 @@ func (e *EvtFailureDetector) timeout() {
 	}
 	
 	e.alive = make(map[int]bool)
-	
+	e.Start()	
 }
 
 // TODO(student): Add other unexported functions or methods if needed.
