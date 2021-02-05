@@ -6,25 +6,24 @@ import "fmt"
 // described at page 53 in:
 // Christian Cachin, Rachid Guerraoui, and Luís Rodrigues: "Introduction to
 // Reliable and Secure Distributed Programming" Springer, 2nd edition, 2011.
-type MonLeaderDetector struct { // TODO(student): Add needed fields
-	suspected map[int]bool // suspected map
+type MonLeaderDetector struct {
+	suspected     map[int]bool // suspected map
 	currentLeader int
-	nodeIDs   []int        // node ids for every node in cluster
-	subscriber chan<- int
+	nodeIDs       []int // node ids for every node in cluster
+	subscriber    []chan int
 }
 
 // NewMonLeaderDetector returns a new Monarchical Eventual Leader Detector
 // given a list of node ids.
 func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
-	// TODO(student): Add needed implementation
 	suspected := make(map[int]bool)
 	startingLeader := -1
-   	for _, val  := range nodeIDs {
-		   fmt.Println(val)
-       if val > startingLeader {
-        	startingLeader = val
-        }
-    }
+	for _, val := range nodeIDs {
+		fmt.Println(val)
+		if val > startingLeader {
+			startingLeader = val
+		}
+	}
 
 	m := &MonLeaderDetector{suspected: suspected, currentLeader: startingLeader, nodeIDs: nodeIDs}
 	return m
@@ -33,9 +32,9 @@ func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
 // Leader returns the current leader. Leader will return UnknownID if all nodes
 // are suspected.
 func (m *MonLeaderDetector) Leader() int {
-	// TODO(student): Implement
+
 	// Her må vi få tak i alle nodeID
-	
+
 	return m.currentLeader
 	return UnknownID
 }
@@ -44,14 +43,17 @@ func (m *MonLeaderDetector) Leader() int {
 // id as suspected. If the suspect indication result in a leader change
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Suspect(id int) {
-	// TODO(student): Implement
+
 	m.suspected[id] = true
-	oldLeader := m.currentLeader 
+	oldLeader := m.currentLeader
 	newLeader := m.changeLeader()
 	if oldLeader != newLeader {
 		//  A switch has been made, notify subscribers
-		m.subscriber <- m.currentLeader
+		//m.subscriber <- m.currentLeader
 		//m.changeLeader()
+		for _, ch := range m.subscriber {
+			ch <- m.currentLeader
+		}
 	}
 }
 
@@ -59,14 +61,17 @@ func (m *MonLeaderDetector) Suspect(id int) {
 // id as restored. If the restore indication result in a leader change
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Restore(id int) {
-	// TODO(student): Implement
+
 	m.suspected[id] = false
-	oldLeader := m.currentLeader 
+	oldLeader := m.currentLeader
 	newLeader := m.changeLeader()
 	if oldLeader != newLeader {
 		fmt.Println(newLeader)
 		//  A switch has been made, notify subscribers
-		m.subscriber <- m.currentLeader
+		for _, ch := range m.subscriber {
+			ch <- m.currentLeader
+		}
+		//m.subscriber <- m.currentLeader
 		//for _, v := range(m.nodeIDs) {
 		//	m.subscriber[v] <- m.currentLeader
 		//}
@@ -81,25 +86,25 @@ func (m *MonLeaderDetector) Restore(id int) {
 // Note: Subscribe returns a unique channel to every subscriber;
 // it is not meant to be shared.
 func (m *MonLeaderDetector) Subscribe() <-chan int {
-	// TODO(student): Implement
+
 	subscriberline := make(chan int, 100)
-	m.subscriber = subscriberline
+	//m.subscriber = subscriberline
 	//subscriberline <- m.currentLeader
 	//m.subscriber[int] = subscriberline
 	//fmt.Println("Create subscriberline")
+	m.subscriber = append(m.subscriber, subscriberline)
 	return subscriberline
 }
 
-// TODO(student): Add other unexported functions or methods if needed.
-func (m *MonLeaderDetector) changeLeader() int{
+func (m *MonLeaderDetector) changeLeader() int {
 	max := -1
 
 	for val := range m.nodeIDs {
-		if val > max && !m.suspected[val]  {
-        	max = val
-        }
+		if val > max && !m.suspected[val] {
+			max = val
+		}
 	}
 	m.currentLeader = max
 	return max
-	
+
 }

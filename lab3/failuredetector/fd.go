@@ -46,7 +46,6 @@ func NewEvtFailureDetector(id int, nodeIDs []int, sr SuspectRestorer, delta time
 	suspected := make(map[int]bool)
 	alive := make(map[int]bool)
 
-	// TODO(student): perform any initialization necessary
 	// Setter alle nodes til alive
 	for i := 0; i < len(nodeIDs); i++ {
 		nr := nodeIDs[i]
@@ -86,7 +85,7 @@ func (e *EvtFailureDetector) Start() {
 			e.testingHook() // DO NOT REMOVE THIS LINE. A no-op when not testing.
 			select {
 			case v := <-e.hbIn:
-				// TODO(student): Handle incoming heartbeat
+
 				if !v.Request {
 					e.alive[v.From] = true
 				} else {
@@ -117,7 +116,7 @@ func (e *EvtFailureDetector) Stop() {
 
 // Internal: timeout runs e's timeout procedure.
 func (e *EvtFailureDetector) timeout() {
-	// TODO(student): Implement timeout procedure
+
 	checkSus := false
 	for alivenode := range e.alive {
 
@@ -151,5 +150,3 @@ func (e *EvtFailureDetector) timeout() {
 	e.Start()
 
 }
-
-// TODO(student): Add other unexported functions or methods if needed.
