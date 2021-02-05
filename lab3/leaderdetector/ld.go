@@ -10,6 +10,7 @@ type MonLeaderDetector struct { // TODO(student): Add needed fields
 	suspected map[int]bool // suspected map
 	currentLeader int
 	nodeIDs   []int        // node ids for every node in cluster
+	subscriber chan<- int
 }
 
 // NewMonLeaderDetector returns a new Monarchical Eventual Leader Detector
@@ -49,6 +50,8 @@ func (m *MonLeaderDetector) Suspect(id int) {
 	newLeader := m.changeLeader()
 	if oldLeader != newLeader {
 		//  A switch has been made, notify subscribers
+		m.subscriber <- m.currentLeader
+		//m.changeLeader()
 	}
 }
 
@@ -61,7 +64,13 @@ func (m *MonLeaderDetector) Restore(id int) {
 	oldLeader := m.currentLeader 
 	newLeader := m.changeLeader()
 	if oldLeader != newLeader {
+		fmt.Println(newLeader)
 		//  A switch has been made, notify subscribers
+		m.subscriber <- m.currentLeader
+		//for _, v := range(m.nodeIDs) {
+		//	m.subscriber[v] <- m.currentLeader
+		//}
+		//m.changeLeader()
 	}
 }
 
@@ -73,7 +82,12 @@ func (m *MonLeaderDetector) Restore(id int) {
 // it is not meant to be shared.
 func (m *MonLeaderDetector) Subscribe() <-chan int {
 	// TODO(student): Implement
-	return nil
+	subscriberline := make(chan int, 100)
+	m.subscriber = subscriberline
+	//subscriberline <- m.currentLeader
+	//m.subscriber[int] = subscriberline
+	//fmt.Println("Create subscriberline")
+	return subscriberline
 }
 
 // TODO(student): Add other unexported functions or methods if needed.
