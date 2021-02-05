@@ -126,8 +126,11 @@ func (e *EvtFailureDetector) timeout() {
 		
 		if  ok := e.suspected[alivenode]; ok {
 			checkSus = true
-			e.delay = e.delay + e.delta
+			
 		}
+	}
+	if checkSus {
+		e.delay = e.delay + e.delta
 	}
 	_ = checkSus
 	//fmt.Println(checkSus)
