@@ -1,17 +1,31 @@
 package leaderdetector
 
+import "fmt"
+
 // A MonLeaderDetector represents a Monarchical Eventual Leader Detector as
 // described at page 53 in:
 // Christian Cachin, Rachid Guerraoui, and Luís Rodrigues: "Introduction to
 // Reliable and Secure Distributed Programming" Springer, 2nd edition, 2011.
 type MonLeaderDetector struct { // TODO(student): Add needed fields
+	suspected map[int]bool // suspected map
+	currentLeader int
+	nodeIDs   []int        // node ids for every node in cluster
 }
 
 // NewMonLeaderDetector returns a new Monarchical Eventual Leader Detector
 // given a list of node ids.
 func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
 	// TODO(student): Add needed implementation
-	m := &MonLeaderDetector{}
+	suspected := make(map[int]bool)
+	startingLeader := -1
+   	for _, val  := range nodeIDs {
+		   fmt.Println(val)
+       if val > startingLeader {
+        	startingLeader = val
+        }
+    }
+
+	m := &MonLeaderDetector{suspected: suspected, currentLeader: startingLeader, nodeIDs: nodeIDs}
 	return m
 }
 
@@ -19,6 +33,9 @@ func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
 // are suspected.
 func (m *MonLeaderDetector) Leader() int {
 	// TODO(student): Implement
+	// Her må vi få tak i alle nodeID
+	
+	return m.currentLeader
 	return UnknownID
 }
 
@@ -27,6 +44,12 @@ func (m *MonLeaderDetector) Leader() int {
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Suspect(id int) {
 	// TODO(student): Implement
+	m.suspected[id] = true
+	oldLeader := m.currentLeader 
+	newLeader := m.changeLeader()
+	if oldLeader != newLeader {
+		//  A switch has been made, notify subscribers
+	}
 }
 
 // Restore instructs the leader detector to consider the node with matching
@@ -34,6 +57,12 @@ func (m *MonLeaderDetector) Suspect(id int) {
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Restore(id int) {
 	// TODO(student): Implement
+	m.suspected[id] = false
+	oldLeader := m.currentLeader 
+	newLeader := m.changeLeader()
+	if oldLeader != newLeader {
+		//  A switch has been made, notify subscribers
+	}
 }
 
 // Subscribe returns a buffered channel which will be used by the leader
@@ -48,3 +77,15 @@ func (m *MonLeaderDetector) Subscribe() <-chan int {
 }
 
 // TODO(student): Add other unexported functions or methods if needed.
+func (m *MonLeaderDetector) changeLeader() int{
+	max := -1
+
+	for val := range m.nodeIDs {
+		if val > max && !m.suspected[val]  {
+        	max = val
+        }
+	}
+	m.currentLeader = max
+	return max
+	
+}
