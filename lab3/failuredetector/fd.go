@@ -141,7 +141,8 @@ func (e *EvtFailureDetector) timeout() {
 			e.sr.Suspect(val)
 			// trigger suspected
 		} else if e.alive[val] && e.suspected[val] {
-			e.suspected[val] = false
+			//e.suspected[val] = false
+			delete(e.suspected, val)
 			// trigger restore
 			e.sr.Restore(val)
 		}
@@ -151,6 +152,7 @@ func (e *EvtFailureDetector) timeout() {
 	
 	e.alive = make(map[int]bool)
 	e.Start()	
+	
 }
 
 // TODO(student): Add other unexported functions or methods if needed.
