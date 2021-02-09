@@ -36,7 +36,6 @@ func (m *MonLeaderDetector) Leader() int {
 	// Her må vi få tak i alle nodeID
 
 	return m.currentLeader
-	return UnknownID
 }
 
 // Suspect instructs the leader detector to consider the node with matching
