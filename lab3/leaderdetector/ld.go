@@ -33,8 +33,6 @@ func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
 // are suspected.
 func (m *MonLeaderDetector) Leader() int {
 
-	// Her må vi få tak i alle nodeID
-
 	return m.currentLeader
 }
 
@@ -44,16 +42,8 @@ func (m *MonLeaderDetector) Leader() int {
 func (m *MonLeaderDetector) Suspect(id int) {
 
 	m.suspected[id] = true
-	oldLeader := m.currentLeader
-	newLeader := m.changeLeader()
-	if oldLeader != newLeader {
-		//  A switch has been made, notify subscribers
-		//m.subscriber <- m.currentLeader
-		//m.changeLeader()
-		for _, ch := range m.subscriber {
-			ch <- m.currentLeader
-		}
-	}
+	m.changeLeader()
+
 }
 
 // Restore instructs the leader detector to consider the node with matching
@@ -62,20 +52,8 @@ func (m *MonLeaderDetector) Suspect(id int) {
 func (m *MonLeaderDetector) Restore(id int) {
 
 	m.suspected[id] = false
-	oldLeader := m.currentLeader
-	newLeader := m.changeLeader()
-	if oldLeader != newLeader {
-		fmt.Println(newLeader)
-		//  A switch has been made, notify subscribers
-		for _, ch := range m.subscriber {
-			ch <- m.currentLeader
-		}
-		//m.subscriber <- m.currentLeader
-		//for _, v := range(m.nodeIDs) {
-		//	m.subscriber[v] <- m.currentLeader
-		//}
-		//m.changeLeader()
-	}
+	m.changeLeader()
+
 }
 
 // Subscribe returns a buffered channel which will be used by the leader
@@ -87,10 +65,6 @@ func (m *MonLeaderDetector) Restore(id int) {
 func (m *MonLeaderDetector) Subscribe() <-chan int {
 
 	subscriberline := make(chan int, 100)
-	//m.subscriber = subscriberline
-	//subscriberline <- m.currentLeader
-	//m.subscriber[int] = subscriberline
-	//fmt.Println("Create subscriberline")
 	m.subscriber = append(m.subscriber, subscriberline)
 	return subscriberline
 }
@@ -103,7 +77,20 @@ func (m *MonLeaderDetector) changeLeader() int {
 			max = val
 		}
 	}
+	oldLeader := m.currentLeader
 	m.currentLeader = max
-	return max
+	newLeader := max
+	if oldLeader != newLeader {
+		//  A switch has been made, notify subscribers
+		m.notifySubscribers()
+	}
 
+	return max
+}
+
+func (m *MonLeaderDetector) notifySubscribers() int {
+	for _, ch := range m.subscriber {
+		ch <- m.currentLeader
+	}
+	return m.currentLeader
 }
