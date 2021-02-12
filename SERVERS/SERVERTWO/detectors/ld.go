@@ -1,4 +1,4 @@
-package leaderdetector
+package detector
 
 import "fmt"
 
@@ -7,7 +7,7 @@ import "fmt"
 // Christian Cachin, Rachid Guerraoui, and Luís Rodrigues: "Introduction to
 // Reliable and Secure Distributed Programming" Springer, 2nd edition, 2011.
 type MonLeaderDetector struct {
-	suspected     map[int]bool // suspected map
+	Suspected     map[int]bool // suspected map
 	currentLeader int
 	nodeIDs       []int // node ids for every node in cluster
 	subscriber    []chan int
@@ -25,7 +25,7 @@ func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
 		}
 	}
 
-	m := &MonLeaderDetector{suspected: suspected, currentLeader: startingLeader, nodeIDs: nodeIDs}
+	m := &MonLeaderDetector{Suspected: suspected, currentLeader: startingLeader, nodeIDs: nodeIDs}
 	return m
 }
 
@@ -41,7 +41,7 @@ func (m *MonLeaderDetector) Leader() int {
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Suspect(id int) {
 
-	m.suspected[id] = true
+	m.Suspected[id] = true
 	m.changeLeader()
 
 }
@@ -51,7 +51,7 @@ func (m *MonLeaderDetector) Suspect(id int) {
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Restore(id int) {
 
-	m.suspected[id] = false
+	m.Suspected[id] = false
 	m.changeLeader()
 
 }
@@ -69,11 +69,15 @@ func (m *MonLeaderDetector) Subscribe() <-chan int {
 	return subscriberline
 }
 
+func (m *MonLeaderDetector) AddNewNode(id int) {
+	m.nodeIDs = append(m.nodeIDs, id)
+}
+
 func (m *MonLeaderDetector) changeLeader() int {
 	max := -1
 
 	for val := range m.nodeIDs {
-		if val > max && !m.suspected[val] {
+		if val > max && !m.Suspected[val] {
 			max = val
 		}
 	}
