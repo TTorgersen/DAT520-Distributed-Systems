@@ -126,11 +126,13 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 
 	//etarnal for loop to handle listening to connections
 	for {
+
 		len, _ := TCPConnection.Read(buffer[0:])
 		message := new(Message)
 		err = json.Unmarshal(buffer[0:len], &message)
-		check(err)
-
+		if message.Type != "Heartbeat" {
+			fmt.Print("ERROR")
+		}
 		n.RecieveChannel <- *message
 
 	}
