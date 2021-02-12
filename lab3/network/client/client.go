@@ -38,16 +38,20 @@ func localAddress() *net.UDPAddr {
 
 func main() {
 	local_address := localAddress()
-	send_address := string(local_address.IP) + ":" + "5000"
+	send_address := local_address.IP.String() + ":" + "5000"
+	//send_address := local_address.String()
+	fmt.Println(send_address)
 	client, err := NewUDPClient(send_address)
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println("hello")
 	var buf [512]byte
-	_, err = client.conn.Write([]byte(send_address))
+	_, err = client.conn.Write([]byte("message"))
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println("hello2")
 	n, err := client.conn.Read(buf[0:])
 	if err != nil {
 		fmt.Println(err)

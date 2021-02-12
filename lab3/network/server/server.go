@@ -36,14 +36,20 @@ func NewUDPServer(addr string) (*UDPServer, error) {
 // the specification.
 func (u *UDPServer) ServeUDP() {
 	//defer u.conn.Close()
+	fmt.Println("hello")
 	buf := make([]byte, 512)
 	for {
 		// Read from socket
+		fmt.Println("hello2")
 		n, addr, err := u.conn.ReadFrom(buf)
+		fmt.Println("hello3")
 		if err != nil {
 			println(err)
 		}
+		fmt.Println("hello4")
+		fmt.Println(string(buf[0:n]))
 		msg := string(buf[0:n])
+		fmt.Println(msg)
 		_, err = u.conn.WriteTo([]byte(msg), addr)
 		if err != nil {
 			println(err)
@@ -72,7 +78,9 @@ func localAddress() *net.UDPAddr {
 
 func main() {
 	local_address := localAddress()
-	send_address := string(local_address.IP) + ":" + "5000"
+	send_address := local_address.IP.String() + ":" + "5000"
+	//send_address := local_address.String()
+	fmt.Println(send_address)
 	server, err := NewUDPServer(send_address)
 	if err != nil {
 		fmt.Println(err)
