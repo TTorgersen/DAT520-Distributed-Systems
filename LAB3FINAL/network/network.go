@@ -130,7 +130,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		message := new(Message)
 		err = json.Unmarshal(buffer[0:len], &message)
 		check(err)
-
+		fmt.Println("MESSAGE", *message)
 		n.RecieveChannel <- *message
 
 	}
