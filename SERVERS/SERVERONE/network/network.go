@@ -133,6 +133,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		if message.Type != "Heartbeat" {
 			fmt.Print("ERROR")
 		}
+		fmt.Println("MELDING", *message)
 		n.RecieveChannel <- *message
 
 	}
