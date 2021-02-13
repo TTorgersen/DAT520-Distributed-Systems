@@ -129,8 +129,9 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		len, _ := TCPConnection.Read(buffer[0:])
 		message := new(Message)
 		err = json.Unmarshal(buffer[0:len], &message)
-		check(err)
-		fmt.Println("MESSAGE", *message)
+		if check(err) {
+			return err
+		}
 		n.RecieveChannel <- *message
 
 	}
@@ -218,7 +219,9 @@ func (n *Network) SendMessage(message Message) (err error) {
 	}
 
 	messageByte, err := json.Marshal(message)
-	check(err)
+	if check(err) {
+		return err
+	}
 	remoteConn := n.Connections[message.To]
 	if remoteConn == nil {
 		return fmt.Errorf("No connection to ", message.To)
