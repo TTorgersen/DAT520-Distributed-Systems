@@ -48,8 +48,8 @@ type Message struct {
 func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 
 	// creates a recieving and send channel
-	reciveChann := make(chan Message, 100)
-	sendChann := make(chan Message, 100)
+	reciveChann := make(chan Message, 65000)
+	sendChann := make(chan Message, 65000)
 
 	// create a network with empty nodes and channels
 	network = Network{
@@ -129,11 +129,12 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 
 		len, _ := TCPConnection.Read(buffer[0:])
 		message := new(Message)
+		fmt.Println("MELDING", message)
+
 		err = json.Unmarshal(buffer[0:len], &message)
 		if message.Type != "Heartbeat" {
 			fmt.Print("ERROR")
 		}
-		fmt.Println("MELDING", *message)
 		n.RecieveChannel <- *message
 
 	}
