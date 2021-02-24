@@ -7,6 +7,9 @@ type Proposer struct {
 	clientValue Value
 	// TODO(student): algorithm implementation
 	// Add other needed fields
+	ID             int
+	nNodes         int
+	PromiseRequest []Promise
 }
 
 // NewProposer returns a new single-decree Paxos proposer.
@@ -20,7 +23,13 @@ type Proposer struct {
 // its id.
 func NewProposer(id int, nrOfNodes int) *Proposer {
 	// TODO(student): algorithm and distributed implementation
-	return &Proposer{}
+	return &Proposer{
+		crnd:           Round(id),
+		clientValue:    ZeroValue,
+		ID:             id,
+		nNodes:         nrOfNodes,
+		PromiseRequest: []Promise{},
+	}
 }
 
 // Internal: handlePromise processes promise prm according to the single-decree
@@ -30,13 +39,16 @@ func NewProposer(id int, nrOfNodes int) *Proposer {
 // struct.
 func (p *Proposer) handlePromise(prm Promise) (acc Accept, output bool) {
 	// TODO(student): algorithm implementation
-	return Accept{From: -1, Rnd: -2, Val: "FooBar"}, true
+
+	return Accept{}, false
 }
 
 // Internal: increaseCrnd increases proposer p's crnd field by the total number
 // of Paxos nodes.
 func (p *Proposer) increaseCrnd() {
 	// TODO(student): algorithm implementation
+	p.crnd += Round(p.nNodes)
+	p.PromiseRequest = nil
 }
 
 // TODO(student): Add any other unexported methods needed.
