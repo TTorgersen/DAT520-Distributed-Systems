@@ -3,13 +3,16 @@ package singlepaxos
 // Proposer represents a proposer as defined by the single-decree Paxos
 // algorithm.
 type Proposer struct {
-	crnd        Round
-	clientValue Value
+	crnd         Round
+	clientValue  Value
+	ID           int
+	nrOfNodes    int
+	quorum       int
+	promises     map[int]*Promise
+	nrOfPromises int
+
 	// TODO(student): algorithm implementation
 	// Add other needed fields
-	ID             int
-	nNodes         int
-	PromiseRequest []Promise
 }
 
 // NewProposer returns a new single-decree Paxos proposer.
@@ -24,11 +27,12 @@ type Proposer struct {
 func NewProposer(id int, nrOfNodes int) *Proposer {
 	// TODO(student): algorithm and distributed implementation
 	return &Proposer{
-		crnd:           Round(id),
-		clientValue:    ZeroValue,
-		ID:             id,
-		nNodes:         nrOfNodes,
-		PromiseRequest: []Promise{},
+		crnd:         Round(id),
+		nrOfNodes:    nrOfNodes,
+		ID:           id,
+		quorum:       (nrOfNodes / 2) + 1,
+		promises:     make(map[int]*Promise),
+		nrOfPromises: 0,
 	}
 }
 
@@ -39,7 +43,21 @@ func NewProposer(id int, nrOfNodes int) *Proposer {
 // struct.
 func (p *Proposer) handlePromise(prm Promise) (acc Accept, output bool) {
 	// TODO(student): algorithm implementation
-
+	if prm.Rnd == p.crnd {
+		p.promises[prm.From] = &prm
+		if len(p.promises) >= p.quorum {
+			promiseValue := false
+			for _, promise := range p.promises {
+				if promise.Vval != ZeroValue {
+					promiseValue = true
+				}
+			}
+			if promiseValue {
+				p.clientValue = p.pickLargest()
+			}
+			return Accept{From: p.ID, Rnd: p.crnd, Val: p.clientValue}, true
+		}
+	}
 	return Accept{}, false
 }
 
@@ -47,8 +65,19 @@ func (p *Proposer) handlePromise(prm Promise) (acc Accept, output bool) {
 // of Paxos nodes.
 func (p *Proposer) increaseCrnd() {
 	// TODO(student): algorithm implementation
-	p.crnd += Round(p.nNodes)
-	p.PromiseRequest = nil
+	p.crnd = p.crnd + Round(p.nrOfNodes)
+}
+
+func (p *Proposer) pickLargest() Value {
+	vrnds := -1
+	in := -1
+	for i, prom := range p.promises {
+		if prom.Vrnd > Round(vrnds) {
+			vrnds = int(prom.Vrnd)
+			in = i
+		}
+	}
+	return p.promises[in].Vval
 }
 
 // TODO(student): Add any other unexported methods needed.
