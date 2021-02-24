@@ -3,13 +3,12 @@ package singlepaxos
 // Proposer represents a proposer as defined by the single-decree Paxos
 // algorithm.
 type Proposer struct {
-	crnd         Round
-	clientValue  Value
-	ID           int
-	nrOfNodes    int
-	quorum       int
-	promises     map[int]*Promise
-	nrOfPromises int
+	crnd        Round
+	clientValue Value
+	ID          int
+	nrOfNodes   int
+	quorum      int
+	promises    map[int]*Promise
 
 	// TODO(student): algorithm implementation
 	// Add other needed fields
@@ -27,12 +26,11 @@ type Proposer struct {
 func NewProposer(id int, nrOfNodes int) *Proposer {
 	// TODO(student): algorithm and distributed implementation
 	return &Proposer{
-		crnd:         Round(id),
-		nrOfNodes:    nrOfNodes,
-		ID:           id,
-		quorum:       (nrOfNodes / 2) + 1,
-		promises:     make(map[int]*Promise),
-		nrOfPromises: 0,
+		crnd:      Round(id),
+		nrOfNodes: nrOfNodes,
+		ID:        id,
+		quorum:    (nrOfNodes / 2) + 1,
+		promises:  make(map[int]*Promise),
 	}
 }
 
@@ -43,16 +41,16 @@ func NewProposer(id int, nrOfNodes int) *Proposer {
 // struct.
 func (p *Proposer) handlePromise(prm Promise) (acc Accept, output bool) {
 	// TODO(student): algorithm implementation
-	if prm.Rnd == p.crnd {
-		p.promises[prm.From] = &prm
-		if len(p.promises) >= p.quorum {
+	if prm.Rnd == p.crnd { //on <PROMISE, rnd, vrnd, vval> with rnd = crnd from acceptor a
+		p.promises[prm.From] = &prm      //add the promise to promises
+		if len(p.promises) >= p.quorum { //if the length of promises is larger than half the nodes
 			promiseValue := false
-			for _, promise := range p.promises {
+			for _, promise := range p.promises { //go through list and see if there are any promises with value
 				if promise.Vval != ZeroValue {
 					promiseValue = true
 				}
 			}
-			if promiseValue {
+			if promiseValue { //if there is a promise with value, pick the largest
 				p.clientValue = p.pickLargest()
 			}
 			return Accept{From: p.ID, Rnd: p.crnd, Val: p.clientValue}, true
@@ -68,6 +66,7 @@ func (p *Proposer) increaseCrnd() {
 	p.crnd = p.crnd + Round(p.nrOfNodes)
 }
 
+// Function to pick the value from the largest vrnds
 func (p *Proposer) pickLargest() Value {
 	vrnds := -1
 	in := -1
