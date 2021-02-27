@@ -4,6 +4,10 @@ package singlepaxos
 // algorithm.
 type Acceptor struct { // TODO(student): algorithm implementation
 	// Add needed fields
+	ID   int
+	rnd  Round //Current round number
+	vrnd Round // Last voted round
+	vval Value // Value of last voted round
 }
 
 // NewAcceptor returns a new single-decree Paxos acceptor.
@@ -12,7 +16,12 @@ type Acceptor struct { // TODO(student): algorithm implementation
 // id: The id of the node running this instance of a Paxos acceptor.
 func NewAcceptor(id int) *Acceptor {
 	// TODO(student): algorithm implementation
-	return &Acceptor{}
+	return &Acceptor{
+		ID:   id,
+		rnd:  NoRound,
+		vrnd: NoRound,
+		vval: ZeroValue,
+	}
 }
 
 // Internal: handlePrepare processes prepare prp according to the single-decree
@@ -22,7 +31,11 @@ func NewAcceptor(id int) *Acceptor {
 // struct.
 func (a *Acceptor) handlePrepare(prp Prepare) (prm Promise, output bool) {
 	// TODO(student): algorithm implementation
-	return Promise{To: -1, From: -1, Vrnd: -2, Vval: "FooBar"}, true
+	if prp.Crnd > a.rnd { //<PREPARE, n> with n > rnd from proposer c
+		a.rnd = prp.Crnd
+		return Promise{To: prp.From, From: a.ID, Rnd: a.rnd, Vrnd: a.vrnd, Vval: a.vval}, true
+	}
+	return Promise{}, false
 }
 
 // Internal: handleAccept processes accept acc according to the single-decree
@@ -31,7 +44,13 @@ func (a *Acceptor) handlePrepare(prp Prepare) (prm Promise, output bool) {
 // handleAccept returns false as output, then lrn will be a zero-valued struct.
 func (a *Acceptor) handleAccept(acc Accept) (lrn Learn, output bool) {
 	// TODO(student): algorithm implementation
-	return Learn{From: -1, Rnd: -2, Val: "FooBar"}, true
+	if acc.Rnd >= a.rnd && acc.Rnd != a.vrnd { //on <ACCEPT, n, v> with n >= rnd ^ n != vrnd from proposer c
+		a.rnd = acc.Rnd
+		a.vrnd = acc.Rnd
+		a.vval = acc.Val
+		return Learn{From: a.ID, Rnd: a.rnd, Val: a.vval}, true
+	}
+	return Learn{}, false
 }
 
 // TODO(student): Add any other unexported methods needed.
