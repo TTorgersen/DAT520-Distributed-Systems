@@ -3,7 +3,6 @@ package multipaxos
 import (
 	"container/list"
 	"dat520/lab3/leaderdetector"
-	"fmt"
 	"sort"
 	"time"
 )
@@ -19,7 +18,6 @@ type Proposer struct {
 	nextSlot SlotID
 
 	promises     []*Promise
-	promisesNotNill []*Promise
 	promiseCount int
 
 	phaseOneDone           bool
@@ -40,7 +38,7 @@ type Proposer struct {
 	stop   chan struct{}
 }
 
-type votedValues struct{
+type votedValues struct {
 	Vrnd Round
 	Vval Value
 }
@@ -171,85 +169,81 @@ func (p *Proposer) IncrementAllDecidedUpTo() {
 // a nil slice.
 func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
 	// TODO(student)
-	
-	// if the round is different from our round, we simply ignore it.
-	if prm.Rnd != p.crnd{return nil, false} //The Proposer should ignore a promise message if the promise has a round different from the Proposer's current round, 
-	fmt.Println("CAN WE GO HERE?1")
-	// The Proposer should ignore a promise message if it has previously received a promise from the same node for the same round.
-	for _, prom := range p.promises{
-		if prom == nil{continue} // if prom is nil we are done and should continue (Unsure if we need this)
-		if prom.Rnd == p.crnd && prom.From == prm.From{return nil, false}
-	}
-	
-	// if none of these has fired, we assume we need the promise and must append it to promise list.
-	
-	
-	p.promises = append(p.promises, &prm)
-	p.promisesNotNill = nil
-	for _, prom := range p.promises{
-		if prom != nil{
-			p.promisesNotNill = append(p.promisesNotNill, prom)
-		}
-	}
-	p.promises = p.promisesNotNill
-	fmt.Println(p.promises)
-	if len(p.promises)< p.quorum{
+	//Spec 1 - Ignore if promise round is different from proposers round
+	if prm.Rnd != p.crnd {
 		return nil, false
 	}
-	//fmt.Println("CAN WE GO HERE?3")
-	// if we are here we have a majority
-	// now we need to get all acceptors
-	accs = []Accept{}
-	//fmt.Println("CAN WE GO HERE?4")
-	promiseSlot := map[SlotID]votedValues{}
-	
-	for _, prom := range p.promises{
-		for _, slot := range prom.Slots{
-			if slot.ID >= p.adu{
-				//fmt.Println("CAN WE GO HERE?4.6")
-				// If a PromiseSlot in a promise message is for a slot lower than the Proposer's current adu (all-decided-up-to), then the PromiseSlot should be ignored.
-				// we add slot to list
+	//Spec 2 - Ignore if it has previously received a promise from the same node for the same round
+	for _, promise := range p.promises {
+		if promise == nil {
+			continue
+		}
+		if promise.From == prm.From && promise.Rnd == prm.Rnd {
+			return nil, false
+		}
 
-
-				var newTupple votedValues
-				//fmt.Println("CAN WE GO HERE?4.7")
-				newTupple.Vrnd = slot.Vrnd
-				newTupple.Vval = slot.Vval
-				if v, OK := promiseSlot[slot.ID]; OK{
-					if v.Vrnd < slot.Vrnd{ //new round is higher than old round
-						promiseSlot[slot.ID] = newTupple
-					}
-			
-				} else{promiseSlot[slot.ID] = newTupple }
-
-
-				promiseSlot[slot.ID] = newTupple
-				//fmt.Println("CAN WE GO HERE?4.8")
-			}
-
+	}
+	// Append promise to slice of promises
+	p.promises = append(p.promises, &prm)
+	promisesNotNil := []*Promise{}
+	// Count promises not equal to zero
+	for _, promise := range p.promises {
+		if promise != nil {
+			promisesNotNil = append(promisesNotNil, promise)
 		}
 	}
-	//fmt.Println("CAN WE GO HERE?5")
-	for key, value := range promiseSlot{
-		
-		accs = append(accs, Accept{From: p.id, Slot: key, Rnd: p.crnd, Val: value.Vval})
+	// If number of promises not equal to nil is a qourum
+	if len(promisesNotNil) < p.quorum {
+		return nil, false
+	}
+	// Spec 5 - If a PromiseSlot in promise message is for a slot lower than the Proposer's current adu (all-decided-up-to),
+	// then the PromiseSlot should be ignored
+	accs = []Accept{}
+	promiseSlot := map[SlotID]votedValues{}
+	// Iterate over all promises not nil
+	for _, prom := range promisesNotNil {
+		// Iterate over all PromiseSlots
+		for _, slot := range prom.Slots {
+			// Ignore PromiseSlot with ID smaller or equal to adu
+			if slot.ID > p.adu {
+				// Check if the slot ID is present in the promiseSlot
+				if v, OK := promiseSlot[slot.ID]; OK {
+					// if present, check if the existing PromiseSlot Vrnd is smaller. If smaller, then update
+					if v.Vrnd < slot.Vrnd {
+						promiseSlot[slot.ID] = votedValues{Vrnd: slot.Vrnd, Vval: slot.Vval}
+					}
+				} else {
+					promiseSlot[slot.ID] = votedValues{Vrnd: slot.Vrnd, Vval: slot.Vval}
+				}
+			}
+		}
 	}
 
-	if len(accs) == 0{return []Accept{}, true}
-	//fmt.Println("CAN WE GO HERE?6")
-	// WE NEED TO SORT AND INSERT NOOP SLOTS
-	sort.SliceStable(accs, func(i,j int) bool{return accs[i].Slot < accs[j].Slot})
-	for i := 0; i < len(accs)-1; i++{
-		for accs[i].Slot +1 != accs[i+1].Slot{
-			newID := accs[i].Slot +1
-			noopaccept := Accept{From: p.id, Slot: newID, Rnd: p.crnd, Val: Value{Noop:true,},}
+	// Append the result from spec 5 to accs slice
+	for key, value := range promiseSlot {
+		accs = append(accs, Accept{From: p.id, Slot: key, Rnd: p.crnd, Val: value.Vval})
+	}
+	// Output: If handling input result in a quorum for the current round, then accs should contain a slice of accept
+	// messages for the slots the Proposer is bound in. If the proposer is not bounded in any slot the accs should be an
+	// empty slice
+	if len(accs) == 0 {
+		return []Accept{}, true
+	}
+	// Spec 3 - All Accept messages in the accs slice should be in increased order
+	sort.SliceStable(accs, func(i, j int) bool {
+		return accs[i].Slot < accs[j].Slot
+	})
+	// Spec 4 - If there is a gap in the set of slots, then set no-op value in gap
+	for i := 0; i < len(accs)-1; i++ {
+		for accs[i].Slot+1 != accs[i+1].Slot {
+			newID := accs[i].Slot + 1
+			noopaccept := Accept{From: p.id, Slot: newID, Rnd: p.crnd, Val: Value{Noop: true}}
 			accs = append(accs, Accept{})
 			copy(accs[i+2:], accs[i+1:])
 			accs[i+1] = noopaccept
 		}
 	}
 	return accs, true
-	
 }
 
 // Internal: increaseCrnd increases proposer p's crnd field by the total number
