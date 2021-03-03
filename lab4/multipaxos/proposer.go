@@ -3,6 +3,7 @@ package multipaxos
 import (
 	"container/list"
 	"dat520/lab3/leaderdetector"
+	"sort"
 	"time"
 )
 
@@ -35,6 +36,11 @@ type Proposer struct {
 
 	incDcd chan struct{}
 	stop   chan struct{}
+}
+
+type votedValues struct {
+	Vrnd Round
+	Vval Value
 }
 
 // NewProposer returns a new Multi-Paxos proposer. It takes the following
@@ -162,10 +168,85 @@ func (p *Proposer) IncrementAllDecidedUpTo() {
 // accept messages. If handlePromise returns false as output, then accs will be
 // a nil slice.
 func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
-	// TODO(student)
-	return []Accept{
-		{From: -1, Slot: -1, Rnd: -2},
-	}, true
+	// TODO(student)i
+	//Spec 1 - Ignore if promise round is different from proposers round
+	//fmt.Println("test1")
+	if prm.Rnd != p.crnd {
+		return nil, false
+	}
+	//Spec 2 - Ignore if it has previously received a promise from the same node for the same round
+	//fmt.Println("test2")
+	for _, promise := range p.promises {
+		if promise == nil {
+			continue
+		}
+		if promise.From == prm.From && promise.Rnd == prm.Rnd {
+			return nil, false
+		}
+
+	}
+	// Append promise to slice of promises
+	p.promises = append(p.promises, &prm)
+	promisesNotNil := []*Promise{}
+	// Count promises not equal to zero
+	for _, promise := range p.promises {
+		if promise != nil {
+			promisesNotNil = append(promisesNotNil, promise)
+		}
+	}
+	// If number of promises not equal to nil is a qourum
+	if len(promisesNotNil) < p.quorum {
+		return nil, false
+	}
+	// Spec 5 - If a PromiseSlot in promise message is for a slot lower than the Proposer's current adu (all-decided-up-to),
+	// then the PromiseSlot should be ignored
+	accs = []Accept{}
+	promiseSlot := map[SlotID]votedValues{}
+	// Iterate over all promises not nil
+	for _, prom := range promisesNotNil {
+		// Iterate over all PromiseSlots
+		for _, slot := range prom.Slots {
+			// Ignore PromiseSlot with ID smaller or equal to adu
+			if slot.ID > p.adu {
+				// Check if the slot ID is present in the promiseSlot
+				if v, OK := promiseSlot[slot.ID]; OK {
+					// if present, check if the existing PromiseSlot Vrnd is smaller. If smaller, then update
+					if v.Vrnd < slot.Vrnd {
+						promiseSlot[slot.ID] = votedValues{Vrnd: slot.Vrnd, Vval: slot.Vval}
+					}
+				} else {
+					promiseSlot[slot.ID] = votedValues{Vrnd: slot.Vrnd, Vval: slot.Vval}
+				}
+			}
+
+		}
+	}
+	// Append the result from spec 5 to accs slice
+	for key, value := range promiseSlot {
+		accs = append(accs, Accept{From: p.id, Slot: key, Rnd: p.crnd, Val: value.Vval})
+	}
+	// Output: If handling input result in a quorum for the current round, then accs should contain a slice of accept
+	// messages for the slots the Proposer is bound in. If the proposer is not bounded in any slot the accs should be an
+	// empty slice
+	if len(accs) == 0 {
+		return []Accept{}, true
+	}
+	// Spec 3 - All Accept messages in the accs slice should be in increased order
+	sort.SliceStable(accs, func(i, j int) bool {
+		return accs[i].Slot < accs[j].Slot
+	})
+	// Spec 4 - If there is a gap in the set of slots, then set no-op value in gap
+	for i := 0; i < len(accs)-1; i++ {
+		for accs[i].Slot+1 != accs[i+1].Slot {
+			newID := accs[i].Slot + 1
+			noopaccept := Accept{From: p.id, Slot: newID, Rnd: p.crnd, Val: Value{Noop: true}}
+			accs = append(accs, Accept{})
+			copy(accs[i+2:], accs[i+1:])
+			accs[i+1] = noopaccept
+		}
+	}
+	//fmt.Println("test8")
+	return accs, true
 }
 
 // Internal: increaseCrnd increases proposer p's crnd field by the total number
