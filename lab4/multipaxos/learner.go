@@ -3,6 +3,13 @@ package multipaxos
 // Learner represents a learner as defined by the Multi-Paxos algorithm.
 type Learner struct { // TODO(student): algorithm and distributed implementation
 	// Add needed fields
+	id         int
+	nrOfNodes  int
+	decidedOut chan string
+	messages   map[int]*Learn
+	rndMax     int
+	curVal     Value
+	valCounter int
 }
 
 // NewLearner returns a new Multi-Paxos learner. It takes the
@@ -16,7 +23,10 @@ type Learner struct { // TODO(student): algorithm and distributed implementation
 // i.e. decided by the Paxos nodes.
 func NewLearner(id int, nrOfNodes int, decidedOut chan<- DecidedValue) *Learner {
 	// TODO(student): algorithm and distributed implementation
-	return &Learner{}
+	newLearner := &Learner{id: id, nrOfNodes: nrOfNodes, rndMax: 0, curVal: Value{ClientID: "0000", ClientSeq: -10, Command: "none"}, valCounter: -1}
+	newLearner.messages = make(map[int]*Learn)
+	newLearner.decidedOut = make(chan string)
+	return newLearner
 }
 
 // Start starts l's main run loop as a separate goroutine. The main run loop
@@ -46,7 +56,59 @@ func (l *Learner) DeliverLearn(lrn Learn) {
 // returns false as output, then val and sid will have their zero value.
 func (l *Learner) handleLearn(learn Learn) (val Value, sid SlotID, output bool) {
 	// TODO(student): algorithm implementation
-	return Value{ClientID: "-1", ClientSeq: -1, Command: "-1"}, -1, true
+	majority := (l.nrOfNodes / 2) + 1
+	l.messages[learn.From] = &learn
+
+	if int(learn.Rnd) > l.rndMax { //Which is the highest round
+		l.rndMax = int(learn.Rnd)
+		l.curVal = Value(learn.Val)
+		l.valCounter = 0
+	}
+
+	switch len(l.messages) {
+	case 0:
+		return Value{}, 0, false
+	case 1:
+		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
+			l.valCounter++
+			if l.valCounter >= majority {
+				return Value(l.curVal), 1, true
+			}
+		}
+	case 2:
+		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
+			l.valCounter++
+			if l.valCounter >= majority {
+				return Value(l.curVal), 1, true
+			}
+		}
+	case 3:
+		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
+			l.valCounter++
+			if l.valCounter >= majority {
+				return Value(l.curVal), 1, true
+			}
+		}
+	case 4:
+		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
+			l.valCounter++
+			if l.valCounter >= majority {
+				return Value(l.curVal), 1, true
+			}
+		}
+	case 5:
+		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
+			l.valCounter++
+			if l.valCounter >= majority {
+				return Value(l.curVal), 1, true
+			}
+		}
+	default:
+		return Value{ClientID: "-1", ClientSeq: -1, Command: "-1"}, 0, false
+
+	}
+
+	return Value{ClientID: "-1", ClientSeq: -1, Command: "-1"}, 0, false
 }
 
 // TODO(student): Add any other unexported methods needed.
