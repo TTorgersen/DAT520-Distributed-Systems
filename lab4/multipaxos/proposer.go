@@ -168,14 +168,12 @@ func (p *Proposer) IncrementAllDecidedUpTo() {
 // accept messages. If handlePromise returns false as output, then accs will be
 // a nil slice.
 func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
-	// TODO(student)i
+	// TODO(student)
 	//Spec 1 - Ignore if promise round is different from proposers round
-	//fmt.Println("test1")
 	if prm.Rnd != p.crnd {
 		return nil, false
 	}
 	//Spec 2 - Ignore if it has previously received a promise from the same node for the same round
-	//fmt.Println("test2")
 	for _, promise := range p.promises {
 		if promise == nil {
 			continue
@@ -218,9 +216,9 @@ func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
 					promiseSlot[slot.ID] = votedValues{Vrnd: slot.Vrnd, Vval: slot.Vval}
 				}
 			}
-
 		}
 	}
+
 	// Append the result from spec 5 to accs slice
 	for key, value := range promiseSlot {
 		accs = append(accs, Accept{From: p.id, Slot: key, Rnd: p.crnd, Val: value.Vval})
@@ -245,7 +243,6 @@ func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
 			accs[i+1] = noopaccept
 		}
 	}
-	//fmt.Println("test8")
 	return accs, true
 }
 
