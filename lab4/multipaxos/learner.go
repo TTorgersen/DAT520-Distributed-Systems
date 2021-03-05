@@ -5,12 +5,14 @@ type Learner struct { // TODO(student): algorithm and distributed implementation
 	// Add needed fields
 	id         int
 	nrOfNodes  int
-	decidedOut chan string
-	messages   map[int]*Learn
-	rndMax     int
-	curVal     Value
-	valCounter int
+	round	   Round
+	lrnSlots   map[SlotID][]Learn
+	lrnSent    map[SlotID]bool
+	decidedOut chan<- DecidedValue
+	lrnValues  chan Learn
+	stop	   chan struct{}
 }
+
 
 // NewLearner returns a new Multi-Paxos learner. It takes the
 // following arguments:
@@ -23,9 +25,7 @@ type Learner struct { // TODO(student): algorithm and distributed implementation
 // i.e. decided by the Paxos nodes.
 func NewLearner(id int, nrOfNodes int, decidedOut chan<- DecidedValue) *Learner {
 	// TODO(student): algorithm and distributed implementation
-	newLearner := &Learner{id: id, nrOfNodes: nrOfNodes, rndMax: 0, curVal: Value{ClientID: "0000", ClientSeq: -10, Command: "none"}, valCounter: -1}
-	newLearner.messages = make(map[int]*Learn)
-	newLearner.decidedOut = make(chan string)
+	newLearner := &Learner{id: id, nrOfNodes: nrOfNodes, round: NoRound, lrnSlots: make(map[SlotID][]Learn), lrnSent: make(map[SlotID]bool), decidedOut: decidedOut, lrnValues: make(chan Learn, 42000), stop: make(chan struct{})}
 	return newLearner
 }
 
@@ -35,6 +35,13 @@ func (l *Learner) Start() {
 	go func() {
 		for {
 			// TODO(student): distributed implementation
+			select{
+			case lrn := <- l.lrnValues:
+				if val, slot, ok := l.handleLearn(lrn); ok == true{
+					l.decidedOut <- DecidedValue{SlotID: slot, Value: val}
+				}
+			case <-l.stop: break
+			}
 		}
 	}()
 }
@@ -42,11 +49,13 @@ func (l *Learner) Start() {
 // Stop stops l's main run loop.
 func (l *Learner) Stop() {
 	// TODO(student): distributed implementation
+	l.stop <- struct{}{}
 }
 
 // DeliverLearn delivers learn lrn to learner l.
 func (l *Learner) DeliverLearn(lrn Learn) {
 	// TODO(student): distributed implementation
+	l.lrnValues <- lrn
 }
 
 // Internal: handleLearn processes learn lrn according to the Multi-Paxos
@@ -57,58 +66,36 @@ func (l *Learner) DeliverLearn(lrn Learn) {
 func (l *Learner) handleLearn(learn Learn) (val Value, sid SlotID, output bool) {
 	// TODO(student): algorithm implementation
 	majority := (l.nrOfNodes / 2) + 1
-	l.messages[learn.From] = &learn
+	
+	if learn.Rnd < l.round{ //check if current round is less than learned round
+		return val, sid, false
+	} else if learn.Rnd == l.round{
+		if learnsInSlot, ok := l.lrnSlots[learn.Slot]; ok {
+			for _, learnsInSlot := range learnsInSlot{  //check if we have already learned this info
+				if learnsInSlot.From == learn.From && learnsInSlot.Rnd == learn.Rnd{ //if we have learned from this node from this round, ignore it
+					return val, sid, false
+				}
+			}
+			l.lrnSlots[learn.Slot] = append(l.lrnSlots[learn.Slot], learn)
 
-	if int(learn.Rnd) > l.rndMax { //Which is the highest round
-		l.rndMax = int(learn.Rnd)
-		l.curVal = Value(learn.Val)
-		l.valCounter = 0
+		}else {
+			l.lrnSlots[learn.Slot] = append(l.lrnSlots[learn.Slot], learn)
+		}
+	} else { //Update l.round if learn.rnd is larger
+		l.round = learn.Rnd
+		l.lrnSlots[learn.Slot] = nil
+		l.lrnSlots[learn.Slot] = append(l.lrnSlots[learn.Slot], learn)
 	}
 
-	switch len(l.messages) {
-	case 0:
-		return Value{}, 0, false
-	case 1:
-		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
-			l.valCounter++
-			if l.valCounter >= majority {
-				return Value(l.curVal), 1, true
-			}
-		}
-	case 2:
-		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
-			l.valCounter++
-			if l.valCounter >= majority {
-				return Value(l.curVal), 1, true
-			}
-		}
-	case 3:
-		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
-			l.valCounter++
-			if l.valCounter >= majority {
-				return Value(l.curVal), 1, true
-			}
-		}
-	case 4:
-		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
-			l.valCounter++
-			if l.valCounter >= majority {
-				return Value(l.curVal), 1, true
-			}
-		}
-	case 5:
-		if l.rndMax == int(learn.Rnd) && learn.Val == Value(l.curVal) {
-			l.valCounter++
-			if l.valCounter >= majority {
-				return Value(l.curVal), 1, true
-			}
-		}
-	default:
-		return Value{ClientID: "-1", ClientSeq: -1, Command: "-1"}, 0, false
-
+	if l.lrnSent[learn.Slot]{ //check if quorum is reached for this slotID
+		return val, sid, false
 	}
 
-	return Value{ClientID: "-1", ClientSeq: -1, Command: "-1"}, 0, false
+	if len(l.lrnSlots[learn.Slot]) >= majority{ //check if quroum larger than majority
+		l.lrnSent[learn.Slot] = true
+		return learn.Val, learn.Slot, true
+	}
+	return val, sid, false
 }
 
 // TODO(student): Add any other unexported methods needed.
