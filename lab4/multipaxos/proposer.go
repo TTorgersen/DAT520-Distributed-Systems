@@ -218,6 +218,7 @@ func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
 			}
 		}
 	}
+
 	// Append the result from spec 5 to accs slice
 	for key, value := range promiseSlot {
 		accs = append(accs, Accept{From: p.id, Slot: key, Rnd: p.crnd, Val: value.Vval})
