@@ -4,6 +4,14 @@ import "fmt"
 
 // Definitions - DO NOT EDIT
 
+const UnknownID int = -1
+
+// LeaderDetector is the interface implemented by a leader detector.
+type LeaderDetector interface {
+	Leader() int
+	Subscribe() <-chan int
+}
+
 // A Heartbeat is the basic message used by failure detectors to communicate
 // with other nodes. A heartbeat message can be of type request or reply.
 type Heartbeat struct {
