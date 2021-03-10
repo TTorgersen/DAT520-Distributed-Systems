@@ -83,17 +83,15 @@ func (e *EvtFailureDetector) Start() {
 		for {
 			e.testingHook() // DO NOT REMOVE THIS LINE. A no-op when not testing.
 			select {
-			case v := <-e.hbIn:
-
-				if !v.Request {
-					e.alive[v.From] = true
-				} else {
-					// SEND HBreply out here
-					hb := Heartbeat{To: v.From, From: v.To, Request: false}
-					e.hbSend <- hb
-
+			case hbReq := <-e.hbIn: // check if we get a heart beat request
+				// Handle incoming heartbeat. If request is true, then make a reply
+				// Sent the reply on the send chanel
+				if hbReq.Request == true {
+					hbReply := Heartbeat{To: hbReq.From, From: hbReq.To, Request: false}
+					e.hbSend <- hbReply
+				} else if hbReq.Request == false {
+					e.alive[hbReq.From] = true
 				}
-
 			case <-e.timeoutSignal.C:
 				e.timeout()
 			case <-e.stop:

@@ -1,59 +1,59 @@
 package leaderdetector
 
-import "fmt"
-
 // A MonLeaderDetector represents a Monarchical Eventual Leader Detector as
 // described at page 53 in:
 // Christian Cachin, Rachid Guerraoui, and Luís Rodrigues: "Introduction to
 // Reliable and Secure Distributed Programming" Springer, 2nd edition, 2011.
 type MonLeaderDetector struct {
-	suspected     map[int]bool // suspected map
-	currentLeader int
+	Suspected     map[int]bool // suspected map
+	CurrentLeader int
 	nodeIDs       []int // node ids for every node in cluster
-	subscriber    []chan int
+	subscribers   []chan int
 }
 
 // NewMonLeaderDetector returns a new Monarchical Eventual Leader Detector
 // given a list of node ids.
 func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
-	suspected := make(map[int]bool)
-	startingLeader := -1
-	for _, val := range nodeIDs {
-		fmt.Println(val)
-		if val > startingLeader {
-			startingLeader = val
-		}
+	m := &MonLeaderDetector{
+		Suspected:     make(map[int]bool),
+		CurrentLeader: UnknownID,
+		nodeIDs:       nodeIDs,
 	}
 
-	m := &MonLeaderDetector{suspected: suspected, currentLeader: startingLeader, nodeIDs: nodeIDs}
+	changed := m.ChangeLeader()
+	if changed {
+		m.NotifySubscribers()
+	}
+
 	return m
 }
 
 // Leader returns the current leader. Leader will return UnknownID if all nodes
 // are suspected.
 func (m *MonLeaderDetector) Leader() int {
-
-	return m.currentLeader
+	return m.CurrentLeader
 }
 
 // Suspect instructs the leader detector to consider the node with matching
 // id as suspected. If the suspect indication result in a leader change
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Suspect(id int) {
-
-	m.suspected[id] = true
-	m.changeLeader()
-
+	m.Suspected[id] = true
+	changed := m.ChangeLeader()
+	if changed {
+		m.NotifySubscribers()
+	}
 }
 
 // Restore instructs the leader detector to consider the node with matching
 // id as restored. If the restore indication result in a leader change
 // the leader detector should publish this change to its subscribers.
 func (m *MonLeaderDetector) Restore(id int) {
-
-	m.suspected[id] = false
-	m.changeLeader()
-
+	m.Suspected[id] = false
+	changed := m.ChangeLeader()
+	if changed {
+		m.NotifySubscribers()
+	}
 }
 
 // Subscribe returns a buffered channel which will be used by the leader
@@ -63,34 +63,29 @@ func (m *MonLeaderDetector) Restore(id int) {
 // Note: Subscribe returns a unique channel to every subscriber;
 // it is not meant to be shared.
 func (m *MonLeaderDetector) Subscribe() <-chan int {
-
-	subscriberline := make(chan int, 100)
-	m.subscriber = append(m.subscriber, subscriberline)
-	return subscriberline
+	ch := make(chan int, 3000)
+	m.subscribers = append(m.subscribers, ch)
+	return ch
 }
 
-func (m *MonLeaderDetector) changeLeader() int {
-	max := -1
+// Change leader node
+func (m *MonLeaderDetector) ChangeLeader() bool {
+	leaderNode := UnknownID
 
-	for val := range m.nodeIDs {
-		if val > max && !m.suspected[val] {
-			max = val
+	for _, node := range m.nodeIDs {
+		if node > leaderNode && m.Suspected[node] == false {
+			leaderNode = node
 		}
 	}
-	oldLeader := m.currentLeader
-	m.currentLeader = max
-	newLeader := max
-	if oldLeader != newLeader {
-		//  A switch has been made, notify subscribers
-		m.notifySubscribers()
+	if leaderNode != m.CurrentLeader {
+		m.CurrentLeader = leaderNode
+		return true
 	}
-
-	return max
+	return false
 }
 
-func (m *MonLeaderDetector) notifySubscribers() int {
-	for _, ch := range m.subscriber {
-		ch <- m.currentLeader
+func (m *MonLeaderDetector) NotifySubscribers() {
+	for _, ch := range m.subscribers {
+		ch <- m.CurrentLeader
 	}
-	return m.currentLeader
 }
