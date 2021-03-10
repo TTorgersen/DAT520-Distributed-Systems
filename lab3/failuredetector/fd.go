@@ -1,7 +1,6 @@
 package failuredetector
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -131,7 +130,6 @@ func (e *EvtFailureDetector) timeout() {
 	_ = checkSus
 	//fmt.Println(checkSus)
 	for val := range e.nodeIDs {
-		fmt.Println(val)
 		if !e.alive[val] && !e.suspected[val] {
 			e.suspected[val] = true
 			e.sr.Suspect(val)
