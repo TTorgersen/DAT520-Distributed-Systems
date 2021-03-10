@@ -83,15 +83,17 @@ func (e *EvtFailureDetector) Start() {
 		for {
 			e.testingHook() // DO NOT REMOVE THIS LINE. A no-op when not testing.
 			select {
-			case hbReq := <-e.hbIn: // check if we get a heart beat request
-				// Handle incoming heartbeat. If request is true, then make a reply
-				// Sent the reply on the send chanel
-				if hbReq.Request == true {
-					hbReply := Heartbeat{To: hbReq.From, From: hbReq.To, Request: false}
-					e.hbSend <- hbReply
-				} else if hbReq.Request == false {
-					e.alive[hbReq.From] = true
+			case v := <-e.hbIn:
+
+				if !v.Request {
+					e.alive[v.From] = true
+				} else {
+					// SEND HBreply out here
+					hb := Heartbeat{To: v.From, From: v.To, Request: false}
+					e.hbSend <- hb
+
 				}
+
 			case <-e.timeoutSignal.C:
 				e.timeout()
 			case <-e.stop:
@@ -113,29 +115,36 @@ func (e *EvtFailureDetector) Stop() {
 
 // Internal: timeout runs e's timeout procedure.
 func (e *EvtFailureDetector) timeout() {
-	// TODO(student): Implement timeout procedure
-	// Check if alive intersect suspected and increse delay
-	for i := range e.alive {
-		if e.alive[i] == true && e.suspected[i] == true {
-			e.delay += e.delta
-			break // Only one intersection to increse delta
+
+	checkSus := false
+	for alivenode := range e.alive {
+
+		if ok := e.suspected[alivenode]; ok {
+			checkSus = true
+
 		}
 	}
+	if checkSus {
+		e.delay = e.delay + e.delta
+	}
+	_ = checkSus
+	//fmt.Println(checkSus)
 	for val := range e.nodeIDs {
-		// If not alive and not suspected, then add to suspected
-		if e.alive[val] == false && e.suspected[val] == false {
+		if !e.alive[val] && !e.suspected[val] {
 			e.suspected[val] = true
 			e.sr.Suspect(val)
-		}
-		// If alive and suspected then delete suspected note from suspected
-		if e.alive[val] == true && e.suspected[val] == true {
-			//e.suspected[i] = false
+			// trigger suspected
+		} else if e.alive[val] && e.suspected[val] {
+			//e.suspected[val] = false
 			delete(e.suspected, val)
+			// trigger restore
 			e.sr.Restore(val)
 		}
-		hbReply := Heartbeat{To: val, From: e.id, Request: true}
-		e.hbSend <- hbReply
+		hb := Heartbeat{To: val, From: e.id, Request: true}
+		e.hbSend <- hb
 	}
+
 	e.alive = make(map[int]bool)
 	e.Start()
+
 }
