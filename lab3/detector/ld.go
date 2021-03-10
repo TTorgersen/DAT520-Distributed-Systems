@@ -1,7 +1,5 @@
 package detector
 
-import "fmt"
-
 // A MonLeaderDetector represents a Monarchical Eventual Leader Detector as
 // described at page 53 in:
 // Christian Cachin, Rachid Guerraoui, and Luís Rodrigues: "Introduction to
@@ -18,14 +16,15 @@ type MonLeaderDetector struct {
 func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
 	suspected := make(map[int]bool)
 	startingLeader := -1
-	for _, val := range nodeIDs {
+	/* 	for _, val := range nodeIDs {
 		fmt.Println(val)
 		if val > startingLeader {
 			startingLeader = val
 		}
-	}
+	} */
 
 	m := &MonLeaderDetector{Suspected: suspected, currentLeader: startingLeader, nodeIDs: nodeIDs}
+	m.changeLeader()
 	return m
 }
 
@@ -69,19 +68,22 @@ func (m *MonLeaderDetector) Subscribe() <-chan int {
 	return subscriberline
 }
 
+//AddNewNode ...
+func (m *MonLeaderDetector) AddNewNode(id int) {
+	m.nodeIDs = append(m.nodeIDs, id)
+}
+
 func (m *MonLeaderDetector) changeLeader() int {
 	max := -1
 
-	for val := range m.nodeIDs {
-		if val > max && !m.Suspected[val] {
+	for _, val := range m.nodeIDs {
+		if val > max && m.Suspected[val] == false {
 			max = val
 		}
 	}
-	oldLeader := m.currentLeader
-	m.currentLeader = max
-	newLeader := max
-	if oldLeader != newLeader {
+	if max != m.currentLeader {
 		//  A switch has been made, notify subscribers
+		m.currentLeader = max
 		m.notifySubscribers()
 	}
 
