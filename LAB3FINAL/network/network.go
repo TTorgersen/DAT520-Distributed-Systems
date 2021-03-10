@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	mp "dat520/lab4/multipaxos"
 )
 
 //Netconf Network config struct
@@ -31,6 +32,7 @@ type Network struct {
 	Myself         Node                 // my node
 	Nodes          []Node               // all nodes in network
 	Connections    map[int]*net.TCPConn // all connections to all nodes in network
+	ClientConnections []*net.TCPConn
 	RecieveChannel chan Message
 	SendChannel    chan Message
 }
@@ -41,6 +43,7 @@ type Message struct {
 	To      int    //nodeid
 	From    int    //nodeid
 	Request bool   // heartbeat true/false
+	Value 	mp.Value // value for client conn
 
 }
 
@@ -132,6 +135,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		if check(err) {
 			return err
 		}
+		
 		n.RecieveChannel <- *message
 
 	}
