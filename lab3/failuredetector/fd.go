@@ -115,36 +115,29 @@ func (e *EvtFailureDetector) Stop() {
 
 // Internal: timeout runs e's timeout procedure.
 func (e *EvtFailureDetector) timeout() {
-
-	checkSus := false
-	for alivenode := range e.alive {
-
-		if ok := e.suspected[alivenode]; ok {
-			checkSus = true
-
+	// TODO(student): Implement timeout procedure
+	// Check if alive intersect suspected and increse delay
+	for i := range e.alive {
+		if e.alive[i] == true && e.suspected[i] == true {
+			e.delay += e.delta
+			break // Only one intersection to increse delta
 		}
 	}
-	if checkSus {
-		e.delay = e.delay + e.delta
-	}
-	_ = checkSus
-	//fmt.Println(checkSus)
 	for val := range e.nodeIDs {
-		if !e.alive[val] && !e.suspected[val] {
+		// If not alive and not suspected, then add to suspected
+		if e.alive[val] == false && e.suspected[val] == false {
 			e.suspected[val] = true
 			e.sr.Suspect(val)
-			// trigger suspected
-		} else if e.alive[val] && e.suspected[val] {
-			//e.suspected[val] = false
+		}
+		// If alive and suspected then delete suspected note from suspected
+		if e.alive[val] == true && e.suspected[val] == true {
+			//e.suspected[i] = false
 			delete(e.suspected, val)
-			// trigger restore
 			e.sr.Restore(val)
 		}
-		hb := Heartbeat{To: val, From: e.id, Request: true}
-		e.hbSend <- hb
+		hbReply := Heartbeat{To: val, From: e.id, Request: true}
+		e.hbSend <- hbReply
 	}
-
 	e.alive = make(map[int]bool)
 	e.Start()
-
 }
