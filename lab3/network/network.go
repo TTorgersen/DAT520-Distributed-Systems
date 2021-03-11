@@ -1,6 +1,7 @@
 package network
 
 import (
+	mp "dat520/lab4/multipaxos"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,11 +38,17 @@ type Network struct {
 
 //Message Struct for sending and recieving across network
 type Message struct {
-	Type    string // heartbeat
-	To      int    //nodeid
-	From    int    //nodeid
-	Request bool   // heartbeat true/false
-
+	Type         string          // heartbeat, accept, promise, prepare, learn, value, response
+	To           int             //nodeid
+	From         int             //nodeid
+	Request      bool            // true = request, false = reply
+	Accept       mp.Accept       //accept msg
+	Promise      mp.Promise      //promise msg
+	Prepare      mp.Prepare      //prepare msg
+	Learn        mp.Learn        //learn msg
+	Value        mp.Value        //value msg
+	Response     mp.Response     //response msg
+	Decidedvalue mp.DecidedValue //decidedvalue
 }
 
 //InitializeNetwork creates a empty network with channels ready
@@ -135,6 +142,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		n.RecieveChannel <- *message
 
 	}
+	return err
 }
 
 //Mutex to lock and unlock go routine
@@ -201,20 +209,67 @@ func (n *Network) StartServer() (err error) {
 	}()
 	go func() { // Listens on sendCHannel for messages
 		for {
-			message := <-n.SendChannel
-			err := n.SendMessage(message)
-			check(err)
+			//message := <-n.SendChannel
+			select {
+			case message := <-n.SendChannel:
+				switch {
+				case message.Type == "Value":
+					lrnMsg := Message{
+						Type:  "Value",
+						From:  message.From,
+						Value: message.Decidedvalue.Value,
+					}
+					for id, conns := range n.Connections {
+						if id > 2 {
+							messageByte, err := json.Marshal(lrnMsg)
+							if err != nil {
+								fmt.Println("failed marshling lrnmsg")
+								log.Print(err)
+								continue
+							}
+							_, err = conns.Write(messageByte)
+							if err != nil {
+								fmt.Println("Failed writing VAL msg")
+								log.Print(err)
+							}
+						}
+					}
+				case message.Type == "Heartbeat":
+					err := n.SendMessage(message)
+					if err != nil {
+						fmt.Println("Failed on heartbeat")
+						log.Print(err)
+					}
+				}
+			}
+
+			/* 	err := n.SendMessage(message)
+			check(err) */
 		}
 
 	}()
 	return err
 }
 
+//SendCommand to other modules
+func (n *Network) SendCommand(message Message, mpModule []int) {
+	fmt.Println("sendCommand")
+	for _, moduleID := range mpModule {
+		message.To = moduleID
+		err := n.SendMessage(message)
+		if err != nil {
+			fmt.Print(err)
+			continue
+		}
+	}
+}
+
 //SendMessage sends a message to the desired recipient
 func (n *Network) SendMessage(message Message) (err error) {
 	if message.To == n.Myself.ID {
 		n.RecieveChannel <- message
-		return
+		fmt.Println("sending to myself")
+		return nil
 	}
 
 	messageByte, err := json.Marshal(message)

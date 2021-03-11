@@ -1,7 +1,6 @@
 package detector
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -47,9 +46,12 @@ func NewEvtFailureDetector(id int, nodeIDs []int, sr SuspectRestorer, delta time
 	alive := make(map[int]bool)
 
 	// Setter alle nodes til alive
-	for i := 0; i < len(nodeIDs); i++ {
+	/* 	for i := 0; i < len(nodeIDs); i++ {
 		nr := nodeIDs[i]
 		alive[nr] = true
+	} */
+	for _, val := range nodeIDs {
+		alive[val] = true
 	}
 	//print(delta)
 
@@ -85,15 +87,22 @@ func (e *EvtFailureDetector) Start() {
 			e.testingHook() // DO NOT REMOVE THIS LINE. A no-op when not testing.
 			select {
 			case v := <-e.hbIn:
-
-				if !v.Request {
+				//fmt.Println("I GOT HTE HEARTBEATE")
+				if v.Request == true && v.To == e.id {
+					//fmt.Println("HB request recieved from us to ourself, replying")
+					hb := Heartbeat{To: v.From, From: v.To, Request: false}
+					e.hbSend <- hb
+				} else if v.Request == false && v.To == e.id {
+					//fmt.Println("reply recieved from", v.From, " to ", v.To, "setting to alive")
+					e.alive[v.From] = true
+				}
+				/* 			if !v.Request {
 					e.alive[v.From] = true
 				} else {
 					// SEND HBreply out here
 					hb := Heartbeat{To: v.From, From: v.To, Request: false}
 					e.hbSend <- hb
-
-				}
+				} */
 
 			case <-e.timeoutSignal.C:
 				e.timeout()
@@ -104,9 +113,20 @@ func (e *EvtFailureDetector) Start() {
 	}()
 }
 
+//AddNewNode ...
+func (e *EvtFailureDetector) AddNewNode(id int) {
+	e.nodeIDs = append(e.nodeIDs, id)
+}
+
+//UpdateSR ...
+func (e *EvtFailureDetector) UpdateSR(m *MonLeaderDetector) {
+	m.changeLeader()
+}
+
 // DeliverHeartbeat delivers heartbeat hb to failure detector e.
 func (e *EvtFailureDetector) DeliverHeartbeat(hb Heartbeat) {
 	e.hbIn <- hb
+
 }
 
 // Stop stops e's main run loop.
@@ -116,11 +136,11 @@ func (e *EvtFailureDetector) Stop() {
 
 // Internal: timeout runs e's timeout procedure.
 func (e *EvtFailureDetector) timeout() {
-
+	//fmt.Println("Am i timing out?")
 	checkSus := false
 	for alivenode := range e.alive {
 
-		if ok := e.suspected[alivenode]; ok {
+		if _, ok := e.suspected[alivenode]; ok {
 			checkSus = true
 
 		}
@@ -128,25 +148,52 @@ func (e *EvtFailureDetector) timeout() {
 	if checkSus {
 		e.delay = e.delay + e.delta
 	}
-	_ = checkSus
+	//fmt.Println("What is my delay", e.delay)
+	//_ = checkSus
 	//fmt.Println(checkSus)
-	for val := range e.nodeIDs {
-		fmt.Println(val)
-		if !e.alive[val] && !e.suspected[val] {
+	for _, val := range e.nodeIDs {
+		//fmt.Println("FD nodeids", val)
+		if e.inAlive(val) == false && e.inSuspected(val) == false {
+			//fmt.Println("node", val, "is suspect. Suspecting")
 			e.suspected[val] = true
 			e.sr.Suspect(val)
 			// trigger suspected
-		} else if e.alive[val] && e.suspected[val] {
+		} else if e.inAlive(val) && e.inSuspected(val) {
+			//fmt.Println("Node ", val, "is alive. Restoring")
 			//e.suspected[val] = false
 			delete(e.suspected, val)
 			// trigger restore
 			e.sr.Restore(val)
 		}
 		hb := Heartbeat{To: val, From: e.id, Request: true}
+		//fmt.Println("BOUT TO SEND HB", hb)
 		e.hbSend <- hb
+
+		//fmt.Println("HBreq sent")
+
 	}
 
 	e.alive = make(map[int]bool)
-	e.Start()
+	//e.Start()
+	e.timeoutSignal.Stop()
+	e.timeoutSignal = time.NewTicker(e.delay)
 
+}
+
+func (e *EvtFailureDetector) inAlive(nodeID int) bool {
+	for node := range e.alive {
+		if node == nodeID {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *EvtFailureDetector) inSuspected(nodeID int) bool {
+	for node := range e.suspected {
+		if node == nodeID {
+			return true
+		}
+	}
+	return false
 }

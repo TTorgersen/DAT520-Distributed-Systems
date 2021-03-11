@@ -2,7 +2,7 @@ package multipaxos
 
 import (
 	"container/list"
-	"dat520/lab3/leaderdetector"
+	detector "dat520/lab3/detector"
 	"sort"
 	"time"
 )
@@ -26,7 +26,7 @@ type Proposer struct {
 	acceptsOut *list.List
 	requestsIn *list.List
 
-	ld     leaderdetector.LeaderDetector
+	ld     detector.LeaderDetector
 	leader int
 
 	prepareOut chan<- Prepare
@@ -60,7 +60,7 @@ type votedValues struct {
 //
 // The proposer's internal crnd field should initially be set to the value of
 // its id.
-func NewProposer(id, nrOfNodes, adu int, ld leaderdetector.LeaderDetector, prepareOut chan<- Prepare, acceptOut chan<- Accept) *Proposer {
+func NewProposer(id, nrOfNodes, adu int, ld detector.LeaderDetector, prepareOut chan<- Prepare, acceptOut chan<- Accept) *Proposer {
 	return &Proposer{
 		id:     id,
 		quorum: (nrOfNodes / 2) + 1,
