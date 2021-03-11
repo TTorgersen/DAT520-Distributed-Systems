@@ -2,8 +2,8 @@ package main
 
 import (
 	detector "dat520/lab3/detector"
-	"dat520/lab3/network"
 	mp "dat520/lab4/multipaxos"
+	"dat520/lab4/network"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -97,19 +97,19 @@ func main() {
 	fmt.Println(fd)
 
 	//step 4.5 : INIT MULTIPAXOS proposer
-	prepareOut := make(chan mp.Prepare, 100) //sendonly channel
+	prepareOut := make(chan mp.Prepare, 100) //sendonly channel send prepare
 	acceptOut := make(chan mp.Accept, 100)   //Incoming accept
 	//adu -1 is initially
 	proposer := mp.NewProposer(thisNetwork.Myself.ID, len(nodeIDList), -1, ld, prepareOut, acceptOut)
 
 	//Step 4.6 INIT acceptor
-	/* 	promiseOut := make(chan mp.Promise, 100) //send promises to other nodes
-	   	learnOut := make(chan mp.Learn, 100)     //send learn to other nodes
-	   	acceptor := mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
-	   	//step 4.7 INIT learner
-	   	decidedOut := make(chan mp.DecidedValue, 100) //send values that has been learned
-	   	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList), decidedOut)
-	*/
+	promiseOut := make(chan mp.Promise, 100) //send promises to other nodes
+	learnOut := make(chan mp.Learn, 100)     //send learn to other nodes
+	acceptor := mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
+	//step 4.7 INIT learner
+	decidedOut := make(chan mp.DecidedValue, 100) //send values that has been learned
+	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList), decidedOut)
+
 	// step 5: Initialize connections
 	// step 6: start server
 	fmt.Println("Trying to init connections")
@@ -119,8 +119,8 @@ func main() {
 
 	//start multiPax
 	proposer.Start()
-	//acceptor.Start()
-	//learner.Start()
+	acceptor.Start()
+	learner.Start()
 
 	ldchange := ld.Subscribe()
 	fmt.Println("Leader is", ld.Leader())
@@ -130,9 +130,9 @@ func main() {
 		select {
 		case newLeader := <-ldchange:
 			fmt.Println("A NEW LEADER HAS BEEN CHOSEN, ALL HAIL LEADER ", newLeader)
-			fmt.Printf("\nSuspected nodes at ld: %v\n", ld.Suspected)
+			//fmt.Printf("\nSuspected nodes at ld: %v\n", ld.Suspected)
 		case hb := <-hbSend:
-			fmt.Println("sends hb from", hb.From, " to  ", hb.To, " from hbsend to network send channel")
+			//fmt.Println("sends hb from", hb.From, " to  ", hb.To, " from hbsend to network send channel")
 			sendHBMessage := network.Message{
 				To:      hb.To,
 				Type:    "Heartbeat",
@@ -140,7 +140,34 @@ func main() {
 				Request: hb.Request,
 			}
 			thisNetwork.SendChannel <- sendHBMessage
-
+		case prp := <-prepareOut:
+			prpMsg := network.Message{
+				Type:    "Prepare",
+				From:    prp.From,
+				Prepare: prp,
+			}
+			thisNetwork.SendChannel <- prpMsg
+		case acc := <-acceptOut:
+			accMsg := network.Message{
+				Type:   "Accept",
+				From:   acc.From,
+				Accept: acc,
+			}
+			thisNetwork.SendChannel <- accMsg
+		case prm := <-promiseOut:
+			prmMsg := network.Message{
+				Type:    "Promise",
+				From:    prm.From,
+				Promise: prm,
+			}
+			thisNetwork.SendChannel <- prmMsg
+		case lrn := <-learnOut:
+			lrnMsg := network.Message{
+				Type:  "Learn",
+				From:  lrn.From,
+				Learn: lrn,
+			}
+			thisNetwork.SendChannel <- lrnMsg
 		case msg := <-thisNetwork.RecieveChannel:
 			fmt.Println("I received msg", msg.Type)
 			switch {
@@ -152,6 +179,14 @@ func main() {
 				}
 				fmt.Println("Active fd deliver heartbeat")
 				fd.DeliverHeartbeat(hb)
+			case msg.Type == "Prepare":
+				acceptor.DeliverPrepare(msg.Prepare)
+			case msg.Type == "Promise":
+				proposer.DeliverPromise(msg.Promise)
+			case msg.Type == "Accept":
+				acceptor.DeliverAccept(msg.Accept)
+			case msg.Type == "Learn":
+				learner.DeliverLearn(msg.Learn)
 			case msg.Type == "Value":
 				fmt.Println("Server 1 got: ", msg.Value.Command, "Sending to proposer")
 				proposer.DeliverClientValue(msg.Value)
