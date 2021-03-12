@@ -264,6 +264,7 @@ func (n *Network) SendMessage(message Message) (err error) {
 	}
 	remoteConn := n.Connections[message.To]
 	if remoteConn == nil {
+		fmt.Println(n.Connections)
 		return fmt.Errorf("No connection to ", message.To)
 	}
 	_, err = n.Connections[message.To].Write(messageByte)
