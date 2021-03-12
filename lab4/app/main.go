@@ -173,7 +173,9 @@ func main() {
 			}
 			thisNetwork.SendChannel <- lrnMsg
 		case msg := <-thisNetwork.RecieveChannel:
-			fmt.Println("I received msg", msg.Type)
+			if msg.Type != "Hearbeat" {
+				fmt.Println("I received msg", msg.Type)
+			}
 			switch {
 			case msg.Type == "Heartbeat":
 				hb := detector.Heartbeat{

@@ -241,8 +241,6 @@ func (n *Network) StartServer() (err error) {
 					}
 				}
 			}
-			/* 	err := n.SendMessage(message)
-			check(err) */
 		}
 
 	}()
@@ -264,9 +262,13 @@ func (n *Network) SendCommand(message Message, mpModule []int) {
 
 //SendMessage sends a message to the desired recipient
 func (n *Network) SendMessage(message Message) (err error) {
-	if message.To == n.Myself.ID {
+	if message.Type == "Heartbeat" {
+		if message.To == n.Myself.ID {
+			n.RecieveChannel <- message
+			return nil
+		}
+	} else {
 		n.RecieveChannel <- message
-		fmt.Println("sending to myself")
 		return nil
 	}
 
