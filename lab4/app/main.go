@@ -147,7 +147,7 @@ func main() {
 				From:    prp.From,
 				Prepare: prp,
 			}
-			thisNetwork.SendChannel <- prpMsg
+			thisNetwork.SendMessageBroadcast(prpMsg, []int{0, 1, 2})
 		case acc := <-acceptOut:
 			fmt.Println("Sends accept out to network")
 			accMsg := network.Message{
@@ -155,15 +155,16 @@ func main() {
 				From:   acc.From,
 				Accept: acc,
 			}
-			thisNetwork.SendChannel <- accMsg
+			thisNetwork.SendMessageBroadcast(accMsg, []int{0, 1, 2})
 		case prm := <-promiseOut:
 			fmt.Println("Sends promise out to network")
 			prmMsg := network.Message{
 				Type:    "Promise",
+				To:      prm.To,
 				From:    prm.From,
 				Promise: prm,
 			}
-			thisNetwork.SendChannel <- prmMsg
+			thisNetwork.SendMessage(prmMsg)
 		case lrn := <-learnOut:
 			fmt.Println("Sends learn out to network")
 			lrnMsg := network.Message{
@@ -171,9 +172,9 @@ func main() {
 				From:  lrn.From,
 				Learn: lrn,
 			}
-			thisNetwork.SendChannel <- lrnMsg
+			thisNetwork.SendMessageBroadcast(lrnMsg, []int{0, 1, 2})
 		case msg := <-thisNetwork.RecieveChannel:
-			if msg.Type != "Hearbeat" {
+			if msg.Type != "Heartbeat" {
 				fmt.Println("I received msg", msg.Type)
 			}
 			switch {

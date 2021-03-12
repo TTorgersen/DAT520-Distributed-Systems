@@ -248,10 +248,9 @@ func (n *Network) StartServer() (err error) {
 }
 
 //SendCommand to other modules
-func (n *Network) SendCommand(message Message, mpModule []int) {
-	fmt.Println("sendCommand")
-	for _, moduleID := range mpModule {
-		message.To = moduleID
+func (n *Network) SendMessageBroadcast(message Message, destination []int) {
+	for _, destID := range destination {
+		message.To = destID
 		err := n.SendMessage(message)
 		if err != nil {
 			fmt.Print(err)
@@ -262,16 +261,10 @@ func (n *Network) SendCommand(message Message, mpModule []int) {
 
 //SendMessage sends a message to the desired recipient
 func (n *Network) SendMessage(message Message) (err error) {
-	if message.Type == "Heartbeat" {
-		if message.To == n.Myself.ID {
-			n.RecieveChannel <- message
-			return nil
-		}
-	} else {
+	if message.To == n.Myself.ID {
 		n.RecieveChannel <- message
 		return nil
 	}
-
 	messageByte, err := json.Marshal(message)
 	if check(err) {
 		return err
