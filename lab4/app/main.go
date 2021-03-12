@@ -173,6 +173,17 @@ func main() {
 				Learn: lrn,
 			}
 			thisNetwork.SendMessageBroadcast(lrnMsg, []int{0, 1, 2})
+		case response := <-decidedOut:
+			resp := mp.Response{
+				ClientID:  response.Value.ClientID,
+				ClientSeq: response.Value.ClientSeq,
+				Command:   response.Value.Command,
+			}
+			resMsg := network.Message{
+				Type:     "Response",
+				Response: resp,
+			}
+			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type != "Heartbeat" {
 				fmt.Println("I received msg", msg.Type)

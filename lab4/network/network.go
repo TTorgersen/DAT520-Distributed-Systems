@@ -212,28 +212,21 @@ func (n *Network) StartServer() (err error) {
 			select {
 			case message := <-n.SendChannel:
 				switch {
-				case message.Type == "Value":
-					lrnMsg := Message{
-						Type:  "Value",
-						From:  message.From,
-						Value: message.Decidedvalue.Value,
-					}
-					for id, conns := range n.Connections {
-						if id > 2 {
-							messageByte, err := json.Marshal(lrnMsg)
-							if err != nil {
-								fmt.Println("failed marshling lrnmsg")
-								log.Print(err)
-								continue
-							}
-							_, err = conns.Write(messageByte)
-							if err != nil {
-								fmt.Println("Failed writing VAL msg")
-								log.Print(err)
-							}
+				case message.Type == "Response":
+					for _, conns := range n.Connections {
+						messageByte, err := json.Marshal(message)
+						if err != nil {
+							fmt.Println("failed marshling lrnmsg")
+							log.Print(err)
+							continue
+						}
+						_, err = conns.Write(messageByte)
+						if err != nil {
+							fmt.Println("Failed writing VAL msg")
+							log.Print(err)
 						}
 					}
-				case message.Type != "Value":
+				case message.Type != "Response":
 					err := n.SendMessage(message)
 					if err != nil {
 						fmt.Println("Failed on heartbeat")
