@@ -188,6 +188,7 @@ func main() {
 				acceptor.DeliverPrepare(msg.Prepare)
 			case msg.Type == "Promise":
 				fmt.Println("Deliver promise to proposer")
+				fmt.Println(msg.Promise)
 				proposer.DeliverPromise(msg.Promise)
 			case msg.Type == "Accept":
 				fmt.Println("Deliver accept to acceptor")
