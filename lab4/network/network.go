@@ -233,7 +233,7 @@ func (n *Network) StartServer() (err error) {
 							}
 						}
 					}
-				case message.Type == "Heartbeat":
+				case message.Type != "Value":
 					err := n.SendMessage(message)
 					if err != nil {
 						fmt.Println("Failed on heartbeat")
@@ -241,7 +241,6 @@ func (n *Network) StartServer() (err error) {
 					}
 				}
 			}
-
 			/* 	err := n.SendMessage(message)
 			check(err) */
 		}
