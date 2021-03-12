@@ -3,6 +3,7 @@ package multipaxos
 import (
 	"container/list"
 	detector "dat520/lab3/detector"
+	"fmt"
 	"sort"
 	"time"
 )
@@ -109,6 +110,7 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case cval := <-p.cvalIn:
+				fmt.Println("Client value received in proposer")
 				if p.id != p.leader {
 					continue
 				}
@@ -127,12 +129,16 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case <-p.phaseOneProgressTicker.C:
+				fmt.Println("Got into the phase one chanel")
 				if p.id == p.leader && !p.phaseOneDone {
+					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case leader := <-trustMsgs:
+				fmt.Println("Leader got trust message")
 				p.leader = leader
 				if leader == p.id {
+					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case <-p.stop:

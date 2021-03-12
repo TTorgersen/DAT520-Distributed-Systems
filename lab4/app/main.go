@@ -141,6 +141,7 @@ func main() {
 			}
 			thisNetwork.SendChannel <- sendHBMessage
 		case prp := <-prepareOut:
+			fmt.Println("Sends prepare out to network")
 			prpMsg := network.Message{
 				Type:    "Prepare",
 				From:    prp.From,
@@ -148,6 +149,7 @@ func main() {
 			}
 			thisNetwork.SendChannel <- prpMsg
 		case acc := <-acceptOut:
+			fmt.Println("Sends accept out to network")
 			accMsg := network.Message{
 				Type:   "Accept",
 				From:   acc.From,
@@ -155,6 +157,7 @@ func main() {
 			}
 			thisNetwork.SendChannel <- accMsg
 		case prm := <-promiseOut:
+			fmt.Println("Sends promise out to network")
 			prmMsg := network.Message{
 				Type:    "Promise",
 				From:    prm.From,
@@ -162,6 +165,7 @@ func main() {
 			}
 			thisNetwork.SendChannel <- prmMsg
 		case lrn := <-learnOut:
+			fmt.Println("Sends learn out to network")
 			lrnMsg := network.Message{
 				Type:  "Learn",
 				From:  lrn.From,
@@ -169,7 +173,7 @@ func main() {
 			}
 			thisNetwork.SendChannel <- lrnMsg
 		case msg := <-thisNetwork.RecieveChannel:
-			fmt.Println("I received msg", msg.Type)
+			//fmt.Println("I received msg", msg.Type)
 			switch {
 			case msg.Type == "Heartbeat":
 				hb := detector.Heartbeat{
@@ -180,15 +184,19 @@ func main() {
 				fmt.Println("Active fd deliver heartbeat")
 				fd.DeliverHeartbeat(hb)
 			case msg.Type == "Prepare":
+				fmt.Println("Deliver prepare to acceptor")
 				acceptor.DeliverPrepare(msg.Prepare)
 			case msg.Type == "Promise":
+				fmt.Println("Deliver promise to proposer")
 				proposer.DeliverPromise(msg.Promise)
 			case msg.Type == "Accept":
+				fmt.Println("Deliver accept to acceptor")
 				acceptor.DeliverAccept(msg.Accept)
 			case msg.Type == "Learn":
+				fmt.Println("Deliver learn to learner")
 				learner.DeliverLearn(msg.Learn)
 			case msg.Type == "Value":
-				fmt.Println("Server 1 got: ", msg.Value.Command, "Sending to proposer")
+				fmt.Println("Deliver value from client to proposer")
 				proposer.DeliverClientValue(msg.Value)
 			}
 

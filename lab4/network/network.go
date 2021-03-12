@@ -70,7 +70,7 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 
 	for _, node := range nodes {
 		if node.ID == Myself {
-			fmt.Printf("YOU are node number %v\n", node.ID)
+			//fmt.Printf("YOU are node number %v\n", node.ID)
 			network.Myself = node
 			//address of myself
 			address := network.Myself.IP + ":" + strconv.Itoa(network.Myself.Port)
@@ -103,7 +103,7 @@ func (n *Network) InitializeConnections() (err error) {
 			continue
 		} else {
 			n.Connections[node.ID] = TCPDial
-			fmt.Printf("Dial via tcp to node %v success\n", node.TCPaddr)
+			//fmt.Printf("Dial via tcp to node %v success\n", node.TCPaddr)
 		}
 
 		// create a separate go routine in order to handle dial connections
@@ -150,7 +150,7 @@ var Mutex = &sync.Mutex{}
 //CloseConn tries to close the connection
 func (n *Network) CloseConn(TCPConnection *net.TCPConn) {
 	TCPConnection.Close()
-	fmt.Println("Network is closing the connection from", TCPConnection.RemoteAddr())
+	//fmt.Println("Network is closing the connection from", TCPConnection.RemoteAddr())
 
 	NodeID := n.findRemoteAdrress(TCPConnection)
 
@@ -175,14 +175,14 @@ func (n *Network) findRemoteAdrress(TCPConnection *net.TCPConn) (NodeID int) {
 
 		}
 	}
-	fmt.Println("CANT FIND NODE ID", RemoteSocket)
+	//fmt.Println("CANT FIND NODE ID", RemoteSocket)
 	return -1
 }
 
 //StartServer starts a tcp listener on application host
 func (n *Network) StartServer() (err error) {
 	TCPListn, err := net.ListenTCP("tcp", n.Myself.TCPaddr)
-	fmt.Println("starting TCP server on node ", n.Myself.ID, n.Myself.TCPaddr)
+	//fmt.Println("starting TCP server on node ", n.Myself.ID, n.Myself.TCPaddr)
 	check(err)
 	// sets this applications listening post
 	n.Myself.TCPListen = TCPListn
@@ -200,7 +200,7 @@ func (n *Network) StartServer() (err error) {
 			Mutex.Lock()
 			n.Connections[NodeID] = TCPaccept
 			Mutex.Unlock()
-			fmt.Println("Accepted TCP from node ", NodeID)
+			//fmt.Println("Accepted TCP from node ", NodeID)
 
 			go n.ListenForConnection(TCPaccept)
 		}
