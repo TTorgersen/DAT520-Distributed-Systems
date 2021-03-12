@@ -29,11 +29,12 @@ type Node struct {
 
 //Network struct is the basis of our network
 type Network struct {
-	Myself         Node                 // my node
-	Nodes          []Node               // all nodes in network
-	Connections    map[int]*net.TCPConn // all connections to all nodes in network
-	RecieveChannel chan Message
-	SendChannel    chan Message
+	Myself            Node                 // my node
+	Nodes             []Node               // all nodes in network
+	Connections       map[int]*net.TCPConn // all connections to all nodes in network
+	ClientConnections []*net.TCPConn
+	RecieveChannel    chan Message
+	SendChannel       chan Message
 }
 
 //Message Struct for sending and recieving across network
@@ -196,12 +197,17 @@ func (n *Network) StartServer() (err error) {
 
 			// find out which node is sending it
 			NodeID := n.findRemoteAdrress(TCPaccept)
-
-			Mutex.Lock()
-			n.Connections[NodeID] = TCPaccept
-			Mutex.Unlock()
-			//fmt.Println("Accepted TCP from node ", NodeID)
-
+			if NodeID == -1 {
+				fmt.Println("A new client has connected")
+				fmt.Println("Client connections", n.ClientConnections)
+				fmt.Println("Servers connections", n.Connections)
+				n.ClientConnections = append(n.ClientConnections, TCPaccept)
+			} else {
+				Mutex.Lock()
+				n.Connections[NodeID] = TCPaccept
+				Mutex.Unlock()
+				//fmt.Println("Accepted TCP from node ", NodeID)
+			}
 			go n.ListenForConnection(TCPaccept)
 		}
 
@@ -213,7 +219,7 @@ func (n *Network) StartServer() (err error) {
 			case message := <-n.SendChannel:
 				switch {
 				case message.Type == "Response":
-					for _, conns := range n.Connections {
+					for _, conns := range n.ClientConnections {
 						messageByte, err := json.Marshal(message)
 						if err != nil {
 							fmt.Println("failed marshling lrnmsg")
