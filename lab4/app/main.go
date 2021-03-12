@@ -202,8 +202,9 @@ func main() {
 			case msg.Type == "Value":
 				fmt.Println("Deliver value from client to proposer")
 				proposer.DeliverClientValue(msg.Value)
+			case msg.Type == "Responce":
+				fmt.Println("Viiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii klllllllllllllllllllaaaaaaaaaaaaaaaaaaarteeeeeeeeeeeeeeeeeeeeee dettttttttttttttttttttttttttttttttttttttttt")
 			}
-
 		}
 
 	}
