@@ -73,7 +73,7 @@ func NewProposer(id, nrOfNodes, adu int, ld detector.LeaderDetector, prepareOut 
 
 		promises: make([]*Promise, nrOfNodes),
 
-		phaseOneProgressTicker: time.NewTicker(time.Second),
+		phaseOneProgressTicker: time.NewTicker(time.Second * 5),
 
 		acceptsOut: list.New(),
 		requestsIn: list.New(),
