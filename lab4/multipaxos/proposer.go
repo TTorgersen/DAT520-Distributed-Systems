@@ -98,6 +98,7 @@ func (p *Proposer) Start() {
 		for {
 			select {
 			case prm := <-p.promiseIn:
+				fmt.Println("Promise received")
 				accepts, output := p.handlePromise(prm)
 				if !output {
 					continue
@@ -105,6 +106,7 @@ func (p *Proposer) Start() {
 				p.nextSlot = p.adu + 1
 				p.acceptsOut.Init()
 				p.phaseOneDone = true
+				fmt.Println("phase1 is true")
 				for _, acc := range accepts {
 					p.acceptsOut.PushBack(acc)
 				}
