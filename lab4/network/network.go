@@ -55,8 +55,8 @@ type Message struct {
 func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 
 	// creates a recieving and send channel
-	reciveChann := make(chan Message, 65000)
-	sendChann := make(chan Message, 65000)
+	reciveChann := make(chan Message, 2000000)
+	sendChann := make(chan Message, 2000000)
 
 	// create a network with empty nodes and channels
 	network = Network{

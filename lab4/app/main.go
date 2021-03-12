@@ -97,17 +97,17 @@ func main() {
 	fmt.Println(fd)
 
 	//step 4.5 : INIT MULTIPAXOS proposer
-	prepareOut := make(chan mp.Prepare, 100) //sendonly channel send prepare
-	acceptOut := make(chan mp.Accept, 100)   //Incoming accept
+	prepareOut := make(chan mp.Prepare, 2000000) //sendonly channel send prepare
+	acceptOut := make(chan mp.Accept, 2000000)   //Incoming accept
 	//adu -1 is initially
 	proposer := mp.NewProposer(thisNetwork.Myself.ID, len(nodeIDList), -1, ld, prepareOut, acceptOut)
 
 	//Step 4.6 INIT acceptor
-	promiseOut := make(chan mp.Promise, 100) //send promises to other nodes
-	learnOut := make(chan mp.Learn, 100)     //send learn to other nodes
+	promiseOut := make(chan mp.Promise, 2000000) //send promises to other nodes
+	learnOut := make(chan mp.Learn, 2000000)     //send learn to other nodes
 	acceptor := mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
 	//step 4.7 INIT learner
-	decidedOut := make(chan mp.DecidedValue, 100) //send values that has been learned
+	decidedOut := make(chan mp.DecidedValue, 2000000) //send values that has been learned
 	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList), decidedOut)
 
 	// step 5: Initialize connections
