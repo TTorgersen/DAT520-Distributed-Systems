@@ -184,6 +184,7 @@ func main() {
 				Response: resp,
 			}
 			fmt.Println("sending response to client", resp)
+			proposer.IncrementAllDecidedUpTo()
 			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type != "Heartbeat" {
