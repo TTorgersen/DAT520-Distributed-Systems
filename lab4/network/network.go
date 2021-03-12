@@ -197,6 +197,7 @@ func (n *Network) StartServer() (err error) {
 
 			// find out which node is sending it
 			NodeID := n.findRemoteAdrress(TCPaccept)
+			fmt.Println("NodeID is", NodeID)
 			if NodeID == -1 {
 				fmt.Println("A new client has connected")
 				fmt.Println("Client connections", n.ClientConnections)
