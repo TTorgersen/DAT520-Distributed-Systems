@@ -1,4 +1,4 @@
-package failuredetector
+package detector
 
 import (
 	"time"
@@ -116,6 +116,11 @@ func (e *EvtFailureDetector) Start() {
 //AddNewNode ...
 func (e *EvtFailureDetector) AddNewNode(id int) {
 	e.nodeIDs = append(e.nodeIDs, id)
+}
+
+//UpdateSR ...
+func (e *EvtFailureDetector) UpdateSR(m *MonLeaderDetector) {
+	m.changeLeader()
 }
 
 // DeliverHeartbeat delivers heartbeat hb to failure detector e.
