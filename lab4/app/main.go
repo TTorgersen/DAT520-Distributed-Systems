@@ -183,6 +183,7 @@ func main() {
 				Type:     "Response",
 				Response: resp,
 			}
+			fmt.Println("sending response to client", resp)
 			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type != "Heartbeat" {
