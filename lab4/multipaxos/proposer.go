@@ -2,7 +2,8 @@ package multipaxos
 
 import (
 	"container/list"
-	"dat520/lab3/leaderdetector"
+	detector "dat520/lab3/detector"
+	"fmt"
 	"sort"
 	"time"
 )
@@ -26,7 +27,7 @@ type Proposer struct {
 	acceptsOut *list.List
 	requestsIn *list.List
 
-	ld     leaderdetector.LeaderDetector
+	ld     detector.LeaderDetector
 	leader int
 
 	prepareOut chan<- Prepare
@@ -60,7 +61,7 @@ type votedValues struct {
 //
 // The proposer's internal crnd field should initially be set to the value of
 // its id.
-func NewProposer(id, nrOfNodes, adu int, ld leaderdetector.LeaderDetector, prepareOut chan<- Prepare, acceptOut chan<- Accept) *Proposer {
+func NewProposer(id, nrOfNodes, adu int, ld detector.LeaderDetector, prepareOut chan<- Prepare, acceptOut chan<- Accept) *Proposer {
 	return &Proposer{
 		id:     id,
 		quorum: (nrOfNodes / 2) + 1,
@@ -72,7 +73,7 @@ func NewProposer(id, nrOfNodes, adu int, ld leaderdetector.LeaderDetector, prepa
 
 		promises: make([]*Promise, nrOfNodes),
 
-		phaseOneProgressTicker: time.NewTicker(time.Second),
+		phaseOneProgressTicker: time.NewTicker(time.Second * 5),
 
 		acceptsOut: list.New(),
 		requestsIn: list.New(),
@@ -82,8 +83,8 @@ func NewProposer(id, nrOfNodes, adu int, ld leaderdetector.LeaderDetector, prepa
 
 		prepareOut: prepareOut,
 		acceptOut:  acceptOut,
-		promiseIn:  make(chan Promise, 8),
-		cvalIn:     make(chan Value, 8),
+		promiseIn:  make(chan Promise, 2000000),
+		cvalIn:     make(chan Value, 2000000),
 
 		incDcd: make(chan struct{}),
 		stop:   make(chan struct{}),
@@ -97,6 +98,7 @@ func (p *Proposer) Start() {
 		for {
 			select {
 			case prm := <-p.promiseIn:
+				fmt.Println("Promise received")
 				accepts, output := p.handlePromise(prm)
 				if !output {
 					continue
@@ -104,11 +106,13 @@ func (p *Proposer) Start() {
 				p.nextSlot = p.adu + 1
 				p.acceptsOut.Init()
 				p.phaseOneDone = true
+				fmt.Println("phase1 is true")
 				for _, acc := range accepts {
 					p.acceptsOut.PushBack(acc)
 				}
 				p.sendAccept()
 			case cval := <-p.cvalIn:
+				fmt.Println("Client value received in proposer")
 				if p.id != p.leader {
 					continue
 				}
@@ -127,12 +131,16 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case <-p.phaseOneProgressTicker.C:
+				fmt.Println("Got into the phase one chanel")
 				if p.id == p.leader && !p.phaseOneDone {
+					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case leader := <-trustMsgs:
+				fmt.Println("Leader got trust message")
 				p.leader = leader
 				if leader == p.id {
+					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case <-p.stop:
