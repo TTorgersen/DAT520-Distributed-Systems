@@ -13,6 +13,7 @@ type MonLeaderDetector struct {
 	subscriber    []chan int
 }
 
+
 // NewMonLeaderDetector returns a new Monarchical Eventual Leader Detector
 // given a list of node ids.
 func NewMonLeaderDetector(nodeIDs []int) *MonLeaderDetector {
