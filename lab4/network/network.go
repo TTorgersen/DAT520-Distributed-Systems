@@ -131,15 +131,16 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	defer n.CloseConn(TCPConnection)
 
 	buffer := make([]byte, 1024, 1024)
-	nodeID := n.findRemoteAdrress(TCPConnection)
-	fmt.Println("listenForConn handle node", nodeID)
+	/* nodeID := n.findRemoteAdrress(TCPConnection)
+	fmt.Println("listenForConn handle node", nodeID) */
+	n.printNetwork()
 
 	//etarnal for loop to handle listening to connections
 	for {
 		len, _ := TCPConnection.Read(buffer[0:])
 		message := new(Message)
 		err = json.Unmarshal(buffer[0:len], &message)
-		fmt.Println("received message over conn", TCPConnection, "  : ", *message)
+		//fmt.Println("received message over conn", TCPConnection, "  : ", *message)
 		if check(err) {
 			fmt.Println("error unmarshling listenforConn", message.From, message.Value.ClientSeq,  len)
 			return err
@@ -272,6 +273,19 @@ func (n *Network) StartServer() (err error) {
 	return err
 }
 
+//printNetwork ... 
+func (n *Network) printNetwork(){
+	fmt.Printf("-- Connection table for node: %d--\n\n", n.Myself.ID)
+	fmt.Printf("Node ID \t Local Address \t\t Remote address \n")
+	for nodeid, TCPconn := range n.Connections{
+		fmt.Printf("node %d		\t	%v		\t %v \n", nodeid, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+	}
+	for i, TCPconn := range n.ClientConnections{
+		fmt.Printf("Client %d	\t  %v  \t %v \n", i, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+	}
+	fmt.Printf("\n --Connection table for node %d--\n", n.Myself.ID)
+
+}
 //SendCommand to other modules
 func (n *Network) SendMessageBroadcast(message Message, destination []int) {
 	for _, destID := range destination {
