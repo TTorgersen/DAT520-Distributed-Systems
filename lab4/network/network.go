@@ -232,6 +232,7 @@ func (n *Network) StartServer() (err error) {
 				Mutex.Unlock()
 				//fmt.Println("Accepted TCP from node ", NodeID)
 			} */
+			fmt.Println("Clientlist", n.ClientConnections)
 			go n.ListenForConnection(TCPaccept)
 		}
 
