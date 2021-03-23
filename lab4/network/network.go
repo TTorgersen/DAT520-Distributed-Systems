@@ -138,6 +138,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		message := new(Message)
 		err = json.Unmarshal(buffer[0:len], &message)
 		if check(err) {
+			fmt.Println("error unmarshling listenforConn")
 			return err
 		}
 		n.RecieveChannel <- *message
@@ -252,10 +253,12 @@ func (n *Network) StartServer() (err error) {
 							fmt.Println("Failed writing VAL msg")
 							log.Print(err)
 						}
+						fmt.Println("Response sendt")
 					}
 				case message.Type != "Response":
 					err := n.SendMessage(message)
 					if err != nil {
+						fmt.Println("the failed message", message)
 						fmt.Println("Failed on heartbeat")
 						log.Print(err)
 					}

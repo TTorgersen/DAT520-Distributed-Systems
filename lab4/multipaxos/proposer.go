@@ -308,6 +308,7 @@ func (p *Proposer) sendAccept() {
 			Val:  cval,
 		}
 		p.nextSlot++
+		fmt.Printf("sending acc to acceptout")
 		p.acceptOut <- acc
 	}
 }
