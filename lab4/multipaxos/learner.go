@@ -1,6 +1,5 @@
 package multipaxos
 
-import "fmt"
 
 // Learner represents a learner as defined by the Multi-Paxos algorithm.
 type Learner struct { // TODO(student): algorithm and distributed implementation
