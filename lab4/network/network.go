@@ -278,10 +278,10 @@ func (n *Network) printNetwork(){
 	fmt.Printf("-- Connection table for node: %d--\n\n", n.Myself.ID)
 	fmt.Printf("Node ID \t Local Address \t\t Remote address \n")
 	for nodeid, TCPconn := range n.Connections{
-		fmt.Printf("node %d	\t	%v	\t %v \n", nodeid, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+		fmt.Printf("node %d\t%v\t %v\n", nodeid, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
 	}
 	for i, TCPconn := range n.ClientConnections{
-		fmt.Printf("Client %d \t  %v  \t %v \n", i, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+		fmt.Printf("Client %d\t%v\t %v\n", i, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
 	}
 	fmt.Printf("\n --Connection table for node %d--\n", n.Myself.ID)
 
