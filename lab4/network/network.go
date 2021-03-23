@@ -258,7 +258,6 @@ func (n *Network) StartServer() (err error) {
 				case message.Type != "Response":
 					err := n.SendMessage(message)
 					if err != nil {
-						fmt.Println("the failed message", message)
 						fmt.Println("Failed on heartbeat")
 						log.Print(err)
 					}
