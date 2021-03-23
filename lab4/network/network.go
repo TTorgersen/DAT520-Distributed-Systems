@@ -139,8 +139,8 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	for {
 		len, _ := TCPConnection.Read(buffer[0:])
 		message2 := &Message{}
-		err = json.Unmarshal([]byte(buffer[0:len]), message2)
-		fmt.Println("stringen", *message2)
+		err = json.Unmarshal([]byte(buffer[:len]), message2)
+		fmt.Println("stringen", *&message2.Learn)
 		message := *message2
 		//fmt.Println("received message over conn", TCPConnection, "  : ", *message)
 		if check(err) {
