@@ -138,20 +138,20 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	//etarnal for loop to handle listening to connections
 	for {
 		len, _ := TCPConnection.Read(buffer[0:])
-		stringen := string(buffer[:len])
-		message := new(Message)
-		fmt.Println("stringen", stringen)
-		err = json.Unmarshal([]byte(buffer[0:len]), &message)
+		message2 := &Message{}
+		err = json.Unmarshal([]byte(buffer[0:len]), message2)
+		fmt.Println("stringen", *message2)
+		message := *message2
 		//fmt.Println("received message over conn", TCPConnection, "  : ", *message)
 		if check(err) {
-			fmt.Println("error unmarshling listenforConn", message.From, message.Value.ClientSeq,  len)
+			fmt.Println("error unmarshling listenforConn", message.From, message.Value.ClientSeq, len)
 			return err
 		}
-		if message.Type != "Heartbeat"{
+		if message.Type != "Heartbeat" {
 			fmt.Println("not heartbeat", message.From, message.Value.ClientSeq, len)
 		}
-		
-		n.RecieveChannel <- *message
+
+		n.RecieveChannel <- message
 	}
 }
 
@@ -212,8 +212,8 @@ func (n *Network) StartServer() (err error) {
 			// find out which node is sending it
 			//NodeID := n.findRemoteAdrress(TCPaccept)
 			//fmt.Println("NodeID is", NodeID)
-			for _, node := range n.Nodes{
-				if node.IP == RemoteIP{
+			for _, node := range n.Nodes {
+				if node.IP == RemoteIP {
 					Mutex.Lock()
 					n.Connections[node.ID] = TCPaccept
 					Mutex.Unlock()
@@ -279,19 +279,20 @@ func (n *Network) StartServer() (err error) {
 	return err
 }
 
-//printNetwork ... 
-func (n *Network) printNetwork(){
+//printNetwork ...
+func (n *Network) printNetwork() {
 	fmt.Printf("-- Connection table for node: %d--\n\n", n.Myself.ID)
 	fmt.Printf("Node ID \t Local Address \t\t Remote address \n")
-	for nodeid, TCPconn := range n.Connections{
+	for nodeid, TCPconn := range n.Connections {
 		fmt.Printf("node %d\t%v\t %v\n", nodeid, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
 	}
-	for i, TCPconn := range n.ClientConnections{
+	for i, TCPconn := range n.ClientConnections {
 		fmt.Printf("Client %d\t%v\t %v\n", i, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
 	}
 	fmt.Printf("\n --Connection table for node %d--\n", n.Myself.ID)
 
 }
+
 //SendCommand to other modules
 func (n *Network) SendMessageBroadcast(message Message, destination []int) {
 	for _, destID := range destination {
