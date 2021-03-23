@@ -131,6 +131,8 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	defer n.CloseConn(TCPConnection)
 
 	buffer := make([]byte, 1024, 1024)
+	nodeID := n.findRemoteAdrress(TCPConnection)
+	fmt.Println("listenForConn handle node", nodeID)
 
 	//etarnal for loop to handle listening to connections
 	for {
@@ -138,7 +140,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		message := new(Message)
 		err = json.Unmarshal(buffer[0:len], &message)
 		if check(err) {
-			fmt.Println("error unmarshling listenforConn")
+			fmt.Println("error unmarshling listenforConn", &message)
 			return err
 		}
 		n.RecieveChannel <- *message
