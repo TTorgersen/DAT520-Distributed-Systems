@@ -195,10 +195,30 @@ func (n *Network) StartServer() (err error) {
 			TCPaccept, err := TCPListn.AcceptTCP()
 			check(err)
 
+			RemoteSocket := TCPaccept.RemoteAddr()
+			RemoteIPPort := strings.Split(RemoteSocket.String(), ":")
+			RemoteIP := RemoteIPPort[0]
+			client := true
 			// find out which node is sending it
-			NodeID := n.findRemoteAdrress(TCPaccept)
-			fmt.Println("NodeID is", NodeID)
-			if NodeID == -1 {
+			//NodeID := n.findRemoteAdrress(TCPaccept)
+			//fmt.Println("NodeID is", NodeID)
+			for _, node := range n.Nodes{
+				if node.IP == RemoteIP{
+					Mutex.Lock()
+					n.Connections[node.ID] = TCPaccept
+					Mutex.Unlock()
+					fmt.Println("Server tcp accepted from node", node.ID)
+					client = false
+				}
+			}
+			if client {
+				fmt.Println("A new client has connected")
+				fmt.Println("Client connections", n.ClientConnections)
+				fmt.Println("Servers connections", n.Connections)
+				n.ClientConnections = append(n.ClientConnections, TCPaccept)
+
+			}
+			/* if NodeID == -1 {
 				fmt.Println("A new client has connected")
 				fmt.Println("Client connections", n.ClientConnections)
 				fmt.Println("Servers connections", n.Connections)
@@ -208,7 +228,7 @@ func (n *Network) StartServer() (err error) {
 				n.Connections[NodeID] = TCPaccept
 				Mutex.Unlock()
 				//fmt.Println("Accepted TCP from node ", NodeID)
-			}
+			} */
 			go n.ListenForConnection(TCPaccept)
 		}
 
