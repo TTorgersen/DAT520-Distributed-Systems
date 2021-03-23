@@ -1,5 +1,7 @@
 package multipaxos
 
+import "fmt"
+
 // Learner represents a learner as defined by the Multi-Paxos algorithm.
 type Learner struct { // TODO(student): algorithm and distributed implementation
 	// Add needed fields
@@ -36,7 +38,9 @@ func (l *Learner) Start() {
 			// TODO(student): distributed implementation
 			select {
 			case lrn := <-l.lrnValues:
+				fmt.Println("incoming lrn", lrn)
 				if val, slot, ok := l.handleLearn(lrn); ok == true {
+					fmt.Println("is lrn ok? ", "val: ", val, "slot ", slot)
 					l.decidedOut <- DecidedValue{SlotID: slot, Value: val}
 				}
 			case <-l.stop:
