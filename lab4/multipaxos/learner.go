@@ -38,9 +38,7 @@ func (l *Learner) Start() {
 			// TODO(student): distributed implementation
 			select {
 			case lrn := <-l.lrnValues:
-				fmt.Println("incoming lrn", lrn)
 				if val, slot, ok := l.handleLearn(lrn); ok == true {
-					fmt.Println("is lrn ok? ", "val: ", val, "slot ", slot)
 					l.decidedOut <- DecidedValue{SlotID: slot, Value: val}
 				}
 			case <-l.stop:
