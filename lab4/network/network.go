@@ -139,12 +139,15 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	for {
 		len, _ := TCPConnection.Read(buffer[0:])
 		message := new(Message)
-		err = json.Unmarshal([]byte(buffer[0:len]), &message)
+		err = json.Unmarshal(buffer[0:len], &message)
 		//fmt.Println("received message over conn", TCPConnection, "  : ", *message)
-		if check(err) {
+		if message.Type != "Heartbeat"{
+			fmt.Println(message.From, message.Value.ClientSeq, len)
+		}
+		/* if check(err) {
 			fmt.Println("error unmarshling listenforConn", message.From, message.Value.ClientSeq,  len)
 			return err
-		}
+		} */
 		n.RecieveChannel <- *message
 	}
 }
