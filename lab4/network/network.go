@@ -35,7 +35,6 @@ type Network struct {
 	ClientConnections []*net.TCPConn
 	RecieveChannel    chan Message
 	SendChannel       chan Message
-	ClientConnChan 	  chan *net.TCPConn
 }
 
 //Message Struct for sending and recieving across network
@@ -69,7 +68,6 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 	// creates a recieving and send channel
 	reciveChann := make(chan Message, 2000000)
 	sendChann := make(chan Message, 2000000)
-	clientConnChann := make(chan *net.TCPConn, 2000000)
 
 	// create a network with empty nodes and channels
 	network = Network{
@@ -78,7 +76,6 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 		ClientConnections: []*net.TCPConn{},
 		RecieveChannel: reciveChann,
 		SendChannel:    sendChann,
-		ClientConnChan: clientConnChann,
 	}
 
 	// for each node, add tcpNetwork
@@ -253,7 +250,6 @@ func (n *Network) StartServer() (err error) {
 				fmt.Println("Client connections", n.ClientConnections)
 				fmt.Println("Servers connections", n.Connections)
 				n.ClientConnections = append(n.ClientConnections, TCPaccept)
-				n.ClientConnChan <- TCPaccept
 
 			}
 			/* if NodeID == -1 {
@@ -347,7 +343,7 @@ func (n *Network) SendMessage(message Message) (err error) {
 	remoteConn := n.Connections[message.To]
 	if remoteConn == nil {
 		fmt.Println(n.Connections)
-		return fmt.Errorf("No connection to ", message.To)
+		return fmt.Errorf("No connection to %v", message.To)
 	}
 	_, err = n.Connections[message.To].Write(messageByte)
 	if err != nil {

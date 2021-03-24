@@ -230,8 +230,8 @@ func listenForConnectiontest(c net.Conn, rchan chan network.Message, connections
 				delete(connections, key)
 
 			}
-			return err
 			fmt.Print(err)
+			return err
 		}
 		msg := new(network.Message)
 		err = json.Unmarshal(buffer[0:len], &msg)
