@@ -101,6 +101,7 @@ func (n *Network) InitializeConnections() (err error) {
 	for _, node := range n.Nodes {
 		TCPDial, err := net.DialTCP("tcp", nil, node.TCPaddr)
 		if check(err) {
+			log.Print(err)
 			continue
 		} else {
 			n.Connections[node.ID] = TCPDial
@@ -143,14 +144,13 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 		fmt.Println("stringen", *&message2.Learn)
 		message := *message2
 		//fmt.Println("received message over conn", TCPConnection, "  : ", *message)
-		if check(err) {
+		if err != nil{
 			fmt.Println("error unmarshling listenforConn", message.From, message.Value.ClientSeq, len)
 			return err
 		}
 		if message.Type != "Heartbeat" {
 			fmt.Println("not heartbeat", message.From, message.Value.ClientSeq, len)
 		}
-
 		n.RecieveChannel <- message
 	}
 }
@@ -169,6 +169,8 @@ func (n *Network) CloseConn(TCPConnection *net.TCPConn) {
 	Mutex.Lock()
 	delete(n.Connections, NodeID)
 	Mutex.Unlock()
+	n.printNetwork()
+
 }
 
 //finds the node id based on the remote address it got in
@@ -313,6 +315,7 @@ func (n *Network) SendMessage(message Message) (err error) {
 	}
 	messageByte, err := json.Marshal(message)
 	if check(err) {
+		fmt.Println("Error in send message Marshal")
 		return err
 	}
 	remoteConn := n.Connections[message.To]
@@ -321,7 +324,8 @@ func (n *Network) SendMessage(message Message) (err error) {
 		return fmt.Errorf("No connection to ", message.To)
 	}
 	_, err = n.Connections[message.To].Write(messageByte)
-	if check(err) {
+	if err != nil {
+		log.Print(err)
 		n.CloseConn(n.Connections[message.To])
 		return err
 	}
