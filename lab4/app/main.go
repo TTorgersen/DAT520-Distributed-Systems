@@ -78,7 +78,7 @@ func main() {
 	// step 3: Initialize LD
 
 	// step 3.1: in order to Init Leaderdetector we need a list of all nodes present
-	nodeIDList := []int{*id}  //prøve ut med *id i listen
+	nodeIDList := []int{}  //prøve ut med *id i listen
 	for _, node := range thisNetwork.Nodes {
 		nodeIDList = append(nodeIDList, node.ID)
 	}
