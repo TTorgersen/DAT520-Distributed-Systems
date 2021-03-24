@@ -35,6 +35,7 @@ type Network struct {
 	ClientConnections []*net.TCPConn
 	RecieveChannel    chan Message
 	SendChannel       chan Message
+	ClientConnChan 	  chan *net.TCPConn
 }
 
 //Message Struct for sending and recieving across network
@@ -50,6 +51,16 @@ type Message struct {
 	Value        mp.Value        //value msg
 	Response     mp.Response     //response msg
 	Decidedvalue mp.DecidedValue //decidedvalue
+	Msg			string
+	ReDirNode	int //clienthandler -> client
+	ClientInfo	ClientInfo //ClientID and such
+
+}
+
+type ClientInfo struct {
+	ClientID string
+	Conn *net.TCPConn
+	Addr string
 }
 
 //InitializeNetwork creates a empty network with channels ready
@@ -58,13 +69,16 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 	// creates a recieving and send channel
 	reciveChann := make(chan Message, 2000000)
 	sendChann := make(chan Message, 2000000)
+	clientConnChann := make(chan *net.TCPConn, 2000000)
 
 	// create a network with empty nodes and channels
 	network = Network{
 		Nodes:          []Node{},
 		Connections:    map[int]*net.TCPConn{},
+		ClientConnections: []*net.TCPConn{},
 		RecieveChannel: reciveChann,
 		SendChannel:    sendChann,
+		ClientConnChan: clientConnChann,
 	}
 
 	// for each node, add tcpNetwork
@@ -164,6 +178,13 @@ func (n *Network) CloseConn(TCPConnection *net.TCPConn) {
 	//fmt.Println("Network is closing the connection from", TCPConnection.RemoteAddr())
 
 	NodeID := n.findRemoteAdrress(TCPConnection)
+	if NodeID == -1 {
+		for i, cC := range n.ClientConnections{
+			if cC.RemoteAddr() == TCPConnection.RemoteAddr(){
+				n.ClientConnections = append(n.ClientConnections[:i], n.ClientConnections[i+1:]...)
+			}
+		}
+	}
 
 	// locks go routine to prevent errors
 	Mutex.Lock()
@@ -196,7 +217,9 @@ func (n *Network) findRemoteAdrress(TCPConnection *net.TCPConn) (NodeID int) {
 func (n *Network) StartServer() (err error) {
 	TCPListn, err := net.ListenTCP("tcp", n.Myself.TCPaddr)
 	//fmt.Println("starting TCP server on node ", n.Myself.ID, n.Myself.TCPaddr)
-	check(err)
+	if err != nil {
+		return err
+	}
 	// sets this applications listening post
 	n.Myself.TCPListen = TCPListn
 
@@ -205,7 +228,9 @@ func (n *Network) StartServer() (err error) {
 		for {
 			//accepting a tcp call and returning a new connection
 			TCPaccept, err := TCPListn.AcceptTCP()
-			check(err)
+			if err != nil {
+				log.Print(err)
+			}
 
 			RemoteSocket := TCPaccept.RemoteAddr()
 			RemoteIPPort := strings.Split(RemoteSocket.String(), ":")
@@ -228,6 +253,7 @@ func (n *Network) StartServer() (err error) {
 				fmt.Println("Client connections", n.ClientConnections)
 				fmt.Println("Servers connections", n.Connections)
 				n.ClientConnections = append(n.ClientConnections, TCPaccept)
+				n.ClientConnChan <- TCPaccept
 
 			}
 			/* if NodeID == -1 {

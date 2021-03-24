@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"time"
 )
 
@@ -125,6 +126,9 @@ func main() {
 	ldchange := ld.Subscribe()
 	fmt.Println("Leader is", ld.Leader())
 	fd.Start()
+
+	done := make(chan os.Signal)
+	signal.Notify(done, os.Interrupt)
 	for {
 
 		select {
@@ -218,6 +222,17 @@ func main() {
 			case msg.Type == "Responce":
 				fmt.Println("Viiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii klllllllllllllllllllaaaaaaaaaaaaaaaaaaarteeeeeeeeeeeeeeeeeeeeee dettttttttttttttttttttttttttttttttttttttttt")
 			}
+		case <- done: 
+			proposer.Stop()
+			acceptor.Stop()
+			learner.Stop()
+			for _,tcpConn := range thisNetwork.Connections{
+				thisNetwork.CloseConn(tcpConn)
+			}
+			for _,tcpConn := range thisNetwork.ClientConnections{
+				thisNetwork.CloseConn(tcpConn)
+			}
+			os.Exit(0)
 		}
 
 	}
