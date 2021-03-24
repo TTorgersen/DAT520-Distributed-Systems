@@ -110,6 +110,7 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 func (n *Network) InitializeConnections() (err error) {
 	// we loop all nodes and try to dial them with dialTCP
 	for _, node := range n.Nodes {
+		fmt.Print("range nodes in int", n.Nodes)
 		TCPDial, err := net.DialTCP("tcp", nil, node.TCPaddr)
 		if check(err) {
 			log.Print(err)

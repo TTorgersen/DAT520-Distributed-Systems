@@ -72,7 +72,7 @@ func main() {
 	// step 2: initialize a empty network with channels
 	thisNetwork, err := network.InitializeNetwork(netconf.Nodes, *id)
 	check(err)
-	fmt.Println(thisNetwork.Myself.ID)
+	fmt.Println(thisNetwork.Myself.ID, *id)
 	// step 2.1: now we have a network with tcp endpoints, all nodes present
 
 	// step 3: Initialize LD
