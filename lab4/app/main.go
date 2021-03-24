@@ -72,19 +72,19 @@ func main() {
 	// step 2: initialize a empty network with channels
 	thisNetwork, err := network.InitializeNetwork(netconf.Nodes, *id)
 	check(err)
-	fmt.Println(thisNetwork)
+	fmt.Println(thisNetwork.Myself.ID)
 	// step 2.1: now we have a network with tcp endpoints, all nodes present
 
 	// step 3: Initialize LD
 
 	// step 3.1: in order to Init Leaderdetector we need a list of all nodes present
-	nodeIDList := []int{}  //prøve ut med *id i listen
+	nodeIDList := []int{*id}  //prøve ut med *id i listen
 	for _, node := range thisNetwork.Nodes {
 		nodeIDList = append(nodeIDList, node.ID)
 	}
 
 	//as we dont have myself in the nodelist we need to append thatone too
-	nodeIDList = append(nodeIDList, thisNetwork.Myself.ID)
+	//nodeIDList = append(nodeIDList, thisNetwork.Myself.ID)
 
 	ld := detector.NewMonLeaderDetector(nodeIDList)
 
