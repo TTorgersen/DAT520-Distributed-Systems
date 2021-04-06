@@ -11,8 +11,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"sort"
 
-	//"strconv"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,6 +55,8 @@ func main() {
 		flag.Usage()
 		os.Exit(0)
 	}
+
+	alive := true
 	// step 1: get network configuration
 
 	//1.1 get network configuration file
@@ -74,13 +77,11 @@ func main() {
 	//Nødvendig for å hjelpe docker å finne rett node ut fra IP den får
 	fmt.Println(netconf)
 	addr, _ := net.InterfaceAddrs()
-	fmt.Println("I AM IRON", addr, addr[1])
 	for _, conns := range netconf.Nodes {
 		addrrr := addr[1].String()
 		splitAddr := strings.Split(addrrr, "/")
 		if conns.IP == splitAddr[0] {
-			fmt.Println("testconn", conns.IP)
-			fmt.Println("splitted", splitAddr[0])
+			
 			*id = conns.ID
 		} else {
 			fmt.Println("not it")
@@ -88,10 +89,32 @@ func main() {
 
 	}
 	// step 2: initialize a empty network with channels
+	/* 	aliveChannel := make(chan struct{}, 20000)
+	   	deadChannel := make(chan struct{}, 20000) */
 
-	thisNetwork, currConf, err := network.InitializeNetwork(netconf.Nodes, *id, defaultNrOfServers)
+	thisNetwork, currConf, err := network.InitializeNetwork(netconf.Nodes, *id)
 	check(err)
 	fmt.Println(thisNetwork.Myself.ID)
+
+	if *id >= defaultNrOfServers {
+		alive = false
+		fmt.Println(*id, " not connected waiting for signal")
+		/* 	for{
+		select {
+		case msg := <- thisNetwork.recieveChannel{
+			switch{
+			case msg.Type == Allive:
+
+			}
+			if (msg.Type == "Alive")
+				if(message.Alive){
+				aliveChannel <- struct{}{}
+				} else {
+				deadChannel <- struct{}{}
+			} */
+
+	}
+
 	// step 2.1: now we have a network with tcp endpoints, all nodes present
 
 	// step 3: Initialize LD
@@ -99,17 +122,17 @@ func main() {
 	// step 3.1: in order to Init Leaderdetector we need a list of all nodes present
 	nodeIDList := []int{*id}
 	for _, node := range thisNetwork.Nodes {
-		if len(nodeIDList) <= defaultNrOfServers-1 {
-			nodeIDList = append(nodeIDList, node.ID)
-
-		}
+		nodeIDList = append(nodeIDList, node.ID)
 	}
 
+	//sorter meg
+	sort.Ints(nodeIDList)
 	fmt.Println("These are the nodes you are looking for.. ", nodeIDList)
+
 	/* 	//as we dont have myself in the nodelist we need to append thatone too
 	   	nodeIDList = append(nodeIDList, thisNetwork.Myself.ID) */
 
-	ld := detector.NewMonLeaderDetector(nodeIDList)
+	ld := detector.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
 
 	// step 4: initialize FD
 
@@ -221,40 +244,87 @@ func main() {
 			}
 			fmt.Println("sending response to client", resp)
 			proposer.IncrementAllDecidedUpTo()
+			//update network config alive node
+
+			if len(response.Value.Command) > 6 {
+				if response.Value.Command[0:7] == "reconf " {
+					defaultNrOfServers, _ = strconv.Atoi(response.Value.Command[7:])
+					fmt.Println("Reconfigure request received, new number of servers: ", defaultNrOfServers)
+					learner.Stop()
+					proposer.Stop()
+					acceptor.Stop()
+					fd.Stop()
+					nrOfNodes = []int{}
+
+					for i := 0; i< defaultNrOfServers; i++{
+						nrOfNodes = append(nrOfNodes, i)
+					}
+
+					rMsg := network.Message{
+						Type: "reconf", 
+						From: defaultNrOfServers, //we just use "from " because it is int
+					}
+					
+					thisNetwork.SendMessageBroadcast(rMsg,nrOfNodes)
+
+
+					continue
+				}
+			}
 			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
-			if msg.Type != "Heartbeat" {
-				fmt.Println("I received msg", msg.Type)
-			}
-			switch {
-			case msg.Type == "Heartbeat":
-				hb := detector.Heartbeat{
-					To:      msg.To,
-					From:    msg.From,
-					Request: msg.Request,
+			if msg.Type=="reconf"{
+				if *id < defaultNrOfServers {
+					alive = true
+
+					ld = detector.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
+					fd = detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList, ld, 10*time.Second, hbSend)
+
+					learner = mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
+					proposer = mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, ld, prepareOut, acceptOut)
+					acceptor = mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
+
+					proposer.Start()
+					acceptor.Start()
+					learner.Start()
+
+					ldchange = ld.Subscribe()
+				
+					fd.Start()
+				} else {
+					alive = false
 				}
-				fmt.Println("Active fd deliver heartbeat")
-				fd.DeliverHeartbeat(hb)
-			case msg.Type == "Prepare":
-				fmt.Println("Deliver prepare to acceptor")
-				acceptor.DeliverPrepare(msg.Prepare)
-			case msg.Type == "Promise":
-				fmt.Println("Deliver promise to proposer")
-				fmt.Println(msg.Promise)
-				proposer.DeliverPromise(msg.Promise)
-			case msg.Type == "Accept":
-				fmt.Println("Deliver accept to acceptor")
-				acceptor.DeliverAccept(msg.Accept)
-			case msg.Type == "Learn":
-				fmt.Println("Deliver learn to learner")
-				learner.DeliverLearn(msg.Learn)
-			case msg.Type == "Value":
-				fmt.Println("Deliver value from client to proposer")
-				proposer.DeliverClientValue(msg.Value)
-			case msg.Type == "Responce":
-				fmt.Println("Viiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii klllllllllllllllllllaaaaaaaaaaaaaaaaaaarteeeeeeeeeeeeeeeeeeeeee dettttttttttttttttttttttttttttttttttttttttt")
-			case msg.Type == "reconf":
-				fmt.Println("Reconf message recieved, reconfiguring with ", msg.Value.Command, " servers")
+			}
+			if alive {
+				switch {
+				case msg.Type == "Heartbeat":
+					hb := detector.Heartbeat{
+						To:      msg.To,
+						From:    msg.From,
+						Request: msg.Request,
+					}
+					//	fmt.Println("Active fd deliver heartbeat")
+					fd.DeliverHeartbeat(hb)
+				case msg.Type == "Prepare":
+					//fmt.Println("Deliver prepare to acceptor")
+					acceptor.DeliverPrepare(msg.Prepare)
+				case msg.Type == "Promise":
+					//fmt.Println("Deliver promise to proposer")
+					fmt.Println(msg.Promise)
+					proposer.DeliverPromise(msg.Promise)
+				case msg.Type == "Accept":
+					//	fmt.Println("Deliver accept to acceptor")
+					acceptor.DeliverAccept(msg.Accept)
+				case msg.Type == "Learn":
+					//fmt.Println("Deliver learn to learner")
+					learner.DeliverLearn(msg.Learn)
+				case msg.Type == "Value":
+					//	fmt.Println("Deliver value from client to proposer")
+					proposer.DeliverClientValue(msg.Value)
+				}
+
+				/* case msg.Type == "reconf":
+				fmt.Println("Reconf message recieved, reconfiguring with ", msg.Value.Command, " servers") */
 				//newNumber, _ := strconv.Atoi(msg.Value.Command)
 				//proposer.DeliverConfig(msg)
 				//Gjennomfør en Reconf(C) metode, hvor C er den nye configen.

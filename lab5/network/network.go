@@ -63,10 +63,11 @@ type Message struct {
 	Response     mp.Response     //response msg
 	Decidedvalue mp.DecidedValue //decidedvalue
 	Reconf       mp.Reconf
+	Alive		bool  //should node be alive or not
 }
 
 //InitializeNetwork creates a empty network with channels ready
-func InitializeNetwork(nodes []Node, Myself int, nrOfServers int) (network Network, currConf Config, err error) {
+func InitializeNetwork(nodes []Node, Myself int) (network Network, currConf Config, err error) {
 
 	// creates a recieving and send channel
 	reciveChann := make(chan Message, 2000000)
@@ -83,9 +84,7 @@ func InitializeNetwork(nodes []Node, Myself int, nrOfServers int) (network Netwo
 
 
 	// for each node, add tcpNetwork
-	i := 0
 	for _, node := range nodes {
-		if i < nrOfServers {
 			if node.ID == Myself {
 				//fmt.Printf("YOU are node number %v\n", node.ID)
 				network.Myself = node
@@ -106,8 +105,7 @@ func InitializeNetwork(nodes []Node, Myself int, nrOfServers int) (network Netwo
 				})
 			
 			}
-		}
-		i++
+	
 
 	}
 	return network, currConf, err
@@ -119,17 +117,17 @@ func InitializeNetwork(nodes []Node, Myself int, nrOfServers int) (network Netwo
 func (n *Network) InitializeConnections() (err error) {
 	// we loop all nodes and try to dial them with dialTCP
 	for _, node := range n.Nodes {
-		TCPDial, err := net.DialTCP("tcp", nil, node.TCPaddr)
-		if check(err) {
-			continue
-		} else {
-			n.Connections[node.ID] = TCPDial
-
-			//fmt.Printf("Dial via tcp to node %v success\n", node.TCPaddr)
-		}
+			TCPDial, err := net.DialTCP("tcp", nil, node.TCPaddr)
+			if check(err) {
+				continue
+			} else {
+				n.Connections[node.ID] = TCPDial
+	
+				//fmt.Printf("Dial via tcp to node %v success\n", node.TCPaddr)
+			}
+			go n.ListenForConnection(TCPDial)
 
 		// create a separate go routine in order to handle dial connections
-		go n.ListenForConnection(TCPDial)
 	}
 	return err
 }
