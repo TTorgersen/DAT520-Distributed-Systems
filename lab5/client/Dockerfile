@@ -5,17 +5,13 @@ FROM golang
 # Copy dependencies from your lab3 files to the container's workspace.
 COPY ./lab3 /go/src/app/lab3
 
-
 # Copy the local package files (lab4) to the container's workspace.
 COPY . /go/src/app
-COPY ./lab4/app/netconf.json /go/src/app/netconf.json
-
-
+COPY ./lab5/app/netconf.json /go/src/app/netconf.json
 
 WORKDIR /go/src/app
 
 #Build and install your application inside the container.
-RUN go install -v ./lab4/app
+RUN go install -v ./lab5/client
 
-ENV <id>=<value>
-ENTRYPOINT ["/go/bin/app"]
+ENTRYPOINT ["/go/bin/client"]

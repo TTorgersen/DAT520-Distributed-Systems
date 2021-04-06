@@ -2,8 +2,8 @@ package main
 
 import (
 	detector "dat520/lab3/detector"
-	mp "dat520/lab4/multipaxos"
-	"dat520/lab4/network"
+	mp "dat520/lab5/multipaxos"
+	"dat520/lab5/network"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,7 +11,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/signal"
+
+	//"strconv"
 	"strings"
 	"time"
 )
@@ -29,8 +30,8 @@ var (
 	)
 	id = flag.Int(
 		"id",
-		42, 
-		"id used", 
+		42,
+		"Id of this process",
 	)
 	delay = flag.Int(
 		"delay",
@@ -60,6 +61,7 @@ func main() {
 	check(err)
 	defer netconfigureFile.Close()
 
+	defaultNrOfServers := 3
 	//1.2 Read the network config file as byte array
 	byteVal, _ := ioutil.ReadAll(netconfigureFile)
 
@@ -69,38 +71,43 @@ func main() {
 	check(err)
 
 	//1.3 Now netconf has the info from json file, step 1 complete
+	//Nødvendig for å hjelpe docker å finne rett node ut fra IP den får
 	fmt.Println(netconf)
 	addr, _ := net.InterfaceAddrs()
 	fmt.Println("I AM IRON", addr, addr[1])
-	for _, conns := range netconf.Nodes{
+	for _, conns := range netconf.Nodes {
 		addrrr := addr[1].String()
 		splitAddr := strings.Split(addrrr, "/")
-		if conns.IP == splitAddr[0]{
+		if conns.IP == splitAddr[0] {
 			fmt.Println("testconn", conns.IP)
 			fmt.Println("splitted", splitAddr[0])
 			*id = conns.ID
 		} else {
 			fmt.Println("not it")
 		}
-		
+
 	}
 	// step 2: initialize a empty network with channels
-	thisNetwork, err := network.InitializeNetwork(netconf.Nodes, *id)
+
+	thisNetwork, currConf, err := network.InitializeNetwork(netconf.Nodes, *id, defaultNrOfServers)
 	check(err)
-	
 	fmt.Println(thisNetwork.Myself.ID)
 	// step 2.1: now we have a network with tcp endpoints, all nodes present
 
 	// step 3: Initialize LD
 
 	// step 3.1: in order to Init Leaderdetector we need a list of all nodes present
-	nodeIDList := []int{*id}  //prøve ut med *id i listen
+	nodeIDList := []int{*id}
 	for _, node := range thisNetwork.Nodes {
-		nodeIDList = append(nodeIDList, node.ID)
+		if len(nodeIDList) <= defaultNrOfServers-1 {
+			nodeIDList = append(nodeIDList, node.ID)
+
+		}
 	}
 
-	//as we dont have myself in the nodelist we need to append thatone too
-	//nodeIDList = append(nodeIDList, thisNetwork.Myself.ID)
+	fmt.Println("These are the nodes you are looking for.. ", nodeIDList)
+	/* 	//as we dont have myself in the nodelist we need to append thatone too
+	   	nodeIDList = append(nodeIDList, thisNetwork.Myself.ID) */
 
 	ld := detector.NewMonLeaderDetector(nodeIDList)
 
@@ -123,10 +130,18 @@ func main() {
 	promiseOut := make(chan mp.Promise, 2000000) //send promises to other nodes
 	learnOut := make(chan mp.Learn, 2000000)     //send learn to other nodes
 	acceptor := mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
+	acceptorList := currConf.Acceptors
+	acceptorList = append(acceptorList, *acceptor)
+
 	//step 4.7 INIT learner
 	decidedOut := make(chan mp.DecidedValue, 2000000) //send values that has been learned
 	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList), decidedOut)
+	learnerList := currConf.Learners
+	learnerList = append(learnerList, *learner)
 
+	fmt.Printf("The acceptors are %v, and the learners are %v", acceptorList, learnerList)
+
+	// Append learner and acceptors to list?
 	// step 5: Initialize connections
 	// step 6: start server
 	fmt.Println("Trying to init connections")
@@ -139,15 +154,16 @@ func main() {
 	acceptor.Start()
 	learner.Start()
 
+	nrOfNodes := []int{0, 1, 2}
+
 	ldchange := ld.Subscribe()
 	fmt.Println("Leader is", ld.Leader())
 	fd.Start()
-
-	done := make(chan os.Signal)
-	signal.Notify(done, os.Interrupt)
+	//reconfChann := make(chan network.Message, 2000000)
 	for {
 
 		select {
+
 		case newLeader := <-ldchange:
 			fmt.Println("A NEW LEADER HAS BEEN CHOSEN, ALL HAIL LEADER ", newLeader)
 			//fmt.Printf("\nSuspected nodes at ld: %v\n", ld.Suspected)
@@ -167,7 +183,7 @@ func main() {
 				From:    prp.From,
 				Prepare: prp,
 			}
-			thisNetwork.SendMessageBroadcast(prpMsg, []int{0, 1, 2})
+			thisNetwork.SendMessageBroadcast(prpMsg, nrOfNodes)
 		case acc := <-acceptOut:
 			fmt.Println("Sends accept out to network")
 			accMsg := network.Message{
@@ -175,7 +191,7 @@ func main() {
 				From:   acc.From,
 				Accept: acc,
 			}
-			thisNetwork.SendMessageBroadcast(accMsg, []int{0, 1, 2})
+			thisNetwork.SendMessageBroadcast(accMsg, nrOfNodes)
 		case prm := <-promiseOut:
 			fmt.Println("Sends promise out to network")
 			prmMsg := network.Message{
@@ -192,7 +208,7 @@ func main() {
 				From:  lrn.From,
 				Learn: lrn,
 			}
-			thisNetwork.SendMessageBroadcast(lrnMsg, []int{0, 1, 2})
+			thisNetwork.SendMessageBroadcast(lrnMsg, nrOfNodes)
 		case response := <-decidedOut:
 			resp := mp.Response{
 				ClientID:  response.Value.ClientID,
@@ -237,16 +253,35 @@ func main() {
 				proposer.DeliverClientValue(msg.Value)
 			case msg.Type == "Responce":
 				fmt.Println("Viiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii klllllllllllllllllllaaaaaaaaaaaaaaaaaaarteeeeeeeeeeeeeeeeeeeeee dettttttttttttttttttttttttttttttttttttttttt")
-			}
-		case <- done: 
-			proposer.Stop()
-			acceptor.Stop()
-			learner.Stop()
-			for _,tcpConn := range thisNetwork.Connections{
-				thisNetwork.CloseConn(tcpConn)
-			}
+			case msg.Type == "reconf":
+				fmt.Println("Reconf message recieved, reconfiguring with ", msg.Value.Command, " servers")
+				//newNumber, _ := strconv.Atoi(msg.Value.Command)
+				//proposer.DeliverConfig(msg)
+				//Gjennomfør en Reconf(C) metode, hvor C er den nye configen.
 
-			os.Exit(0)
+				//fmt.Println("the old list of nodes", nodeIDList)
+
+				/* nodeIDList = []int{*id}
+				for _, node := range thisNetwork.Nodes {
+					if (*id == node.ID){
+						fmt.Println("are these the same?", *id, node.ID)
+						continue
+					} else if len(nodeIDList) <= newNumber-1 {
+						fmt.Println(node.ID, newNumber)
+						nodeIDList = append(nodeIDList, node.ID)
+					}
+				}
+				fmt.Println("the new list of nodes", nodeIDList)
+
+				nrOfNodes = []int{}
+				for i := range nodeIDList{
+					nrOfNodes = append(nrOfNodes, i)
+				}
+				fmt.Println("new nodelist", nrOfNodes)
+
+				defaultNrOfServers = newNumber */
+
+			}
 		}
 
 	}
