@@ -152,16 +152,12 @@ func main() {
 	promiseOut := make(chan mp.Promise, 2000000) //send promises to other nodes
 	learnOut := make(chan mp.Learn, 2000000)     //send learn to other nodes
 	acceptor := mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
-	acceptorList := currConf.Acceptors
-	acceptorList = append(acceptorList, *acceptor)
 
 	//step 4.7 INIT learner
 	decidedOut := make(chan mp.DecidedValue, 2000000) //send values that has been learned
 	learner := mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
-	learnerList := currConf.Learners
-	learnerList = append(learnerList, *learner)
 
-	fmt.Printf("The acceptors are %v, and the learners are %v", acceptorList, learnerList)
+	//fmt.Printf("The acceptors are %v, and the learners are %v", acceptorList, learnerList)
 
 	// Append learner and acceptors to list?
 	// step 5: Initialize connections
@@ -174,16 +170,13 @@ func main() {
 	ldchange := ld.Subscribe()
 
 	if alive {
-	//start multiPax
-	proposer.Start()
-	acceptor.Start()
-	learner.Start()
+		//start multiPax
+		proposer.Start()
+		acceptor.Start()
+		learner.Start()
 
-	
-
-	
-	fmt.Println("Leader is", ld.Leader())
-	fd.Start()
+		fmt.Println("Leader is", ld.Leader())
+		fd.Start()
 	}
 	//reconfChann := make(chan network.Message, 2000000)
 	for {
@@ -259,24 +252,23 @@ func main() {
 					fd.Stop()
 					nrOfNodes = []int{}
 
-					for i := 0; i< defaultNrOfServers; i++{
+					for i := 0; i < defaultNrOfServers; i++ {
 						nrOfNodes = append(nrOfNodes, i)
 					}
 
 					rMsg := network.Message{
-						Type: "reconf", 
+						Type: "reconf",
 						From: defaultNrOfServers, //we just use "from " because it is int
 					}
-					
-					thisNetwork.SendMessageBroadcast(rMsg,nrOfNodes)
 
+					thisNetwork.SendMessageBroadcast(rMsg, nrOfNodes)
 
 					continue
 				}
 			}
 			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
-			if msg.Type=="reconf"{
+			if msg.Type == "reconf" {
 				if *id < defaultNrOfServers {
 					alive = true
 
@@ -292,7 +284,7 @@ func main() {
 					learner.Start()
 
 					ldchange = ld.Subscribe()
-				
+
 					fd.Start()
 				} else {
 					alive = false
