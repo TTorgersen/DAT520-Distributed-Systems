@@ -171,17 +171,21 @@ func main() {
 	thisNetwork.InitializeConnections()
 	thisNetwork.StartServer()
 	fmt.Println("Started server, we good")
+	nrOfNodes := []int{0, 1, 2}
+	ldchange := ld.Subscribe()
 
+	if alive {
 	//start multiPax
 	proposer.Start()
 	acceptor.Start()
 	learner.Start()
 
-	nrOfNodes := []int{0, 1, 2}
+	
 
-	ldchange := ld.Subscribe()
+	
 	fmt.Println("Leader is", ld.Leader())
 	fd.Start()
+	}
 	//reconfChann := make(chan network.Message, 2000000)
 	for {
 

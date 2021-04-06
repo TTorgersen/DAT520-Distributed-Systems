@@ -217,7 +217,6 @@ func (n *Network) StartServer() (err error) {
 
 			// find out which node is sending it
 			NodeID := n.findRemoteAdrress(TCPaccept)
-			fmt.Println("NodeID is", NodeID)
 			if NodeID == -1 {
 				fmt.Println("A new client has connected")
 				n.ClientConnections = append(n.ClientConnections, TCPaccept)
@@ -244,20 +243,17 @@ func (n *Network) StartServer() (err error) {
 					for _, conns := range n.ClientConnections {
 						messageByte, err := json.Marshal(message)
 						if err != nil {
-							fmt.Println("failed marshling lrnmsg")
 							log.Print(err)
 							continue
 						}
 						_, err = conns.Write(messageByte)
 						if err != nil {
-							fmt.Println("Failed writing VAL msg")
 							log.Print(err)
 						}
 					}
 				case message.Type != "Response":
 					err := n.SendMessage(message)
 					if err != nil {
-						fmt.Println("Failed on heartbeat")
 						log.Print(err)
 					}
 				}
@@ -286,7 +282,7 @@ func (n *Network) SendMessage(message Message) (err error) {
 		n.RecieveChannel <- message
 		return nil
 	}
-	messageByte, err := json.Marshal(message)
+	messageByte, err := json.Marshal(message) 
 	if check(err) {
 		return err
 	}

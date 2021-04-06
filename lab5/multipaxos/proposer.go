@@ -98,7 +98,6 @@ func (p *Proposer) Start() {
 		for {
 			select {
 			case prm := <-p.promiseIn:
-				fmt.Println("Promise received")
 				accepts, output := p.handlePromise(prm)
 				if !output {
 					continue
@@ -131,16 +130,12 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case <-p.phaseOneProgressTicker.C:
-				fmt.Println("Got into the phase one chanel")
 				if p.id == p.leader && !p.phaseOneDone {
-					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case leader := <-trustMsgs:
-				fmt.Println("Leader got trust message")
 				p.leader = leader
 				if leader == p.id {
-					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case <-p.stop:
@@ -276,7 +271,6 @@ func (p *Proposer) startPhaseOne() {
 func (p *Proposer) sendAccept() {
 	const alpha = 1
 	if !(p.nextSlot <= p.adu+alpha) {
-		fmt.Println("pri 0")
 		// We must wait for the next slot to be decided before we can
 		// send an accept.
 		//
@@ -290,7 +284,6 @@ func (p *Proposer) sendAccept() {
 	// Pri 1: If bounded by any accepts from Phase One -> send previously
 	// generated accept and return.
 	if p.acceptsOut.Len() > 0 {
-		fmt.Println("pri 1")
 		acc := p.acceptsOut.Front().Value.(Accept)
 		p.acceptsOut.Remove(p.acceptsOut.Front())
 		p.acceptOut <- acc
@@ -301,7 +294,6 @@ func (p *Proposer) sendAccept() {
 	// Pri 2: If any client request in queue -> generate and send
 	// accept.
 	if p.requestsIn.Len() > 0 {
-		fmt.Println("pri 2")
 		cval := p.requestsIn.Front().Value.(Value)
 		p.requestsIn.Remove(p.requestsIn.Front())
 		acc := Accept{
@@ -311,7 +303,6 @@ func (p *Proposer) sendAccept() {
 			Val:  cval,
 		}
 		p.nextSlot++
-		fmt.Printf("sending acc to acceptout")
 		p.acceptOut <- acc
 	}
 }
