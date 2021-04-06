@@ -67,7 +67,7 @@ type Message struct {
 }
 
 //InitializeNetwork creates a empty network with channels ready
-func InitializeNetwork(nodes []Node, Myself int) (network Network, currConf Config, err error) {
+func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 
 	// creates a recieving and send channel
 	reciveChann := make(chan Message, 2000000)
@@ -102,13 +102,11 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, currConf Conf
 					IP:      node.IP,
 					Port:    node.Port,
 					TCPaddr: tcpEndpoint,
-				})
-			
+				})	
 			}
 	
-
 	}
-	return network, currConf, err
+	return network, err
 
 }
 
@@ -149,7 +147,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	// defers closing connection until the end
 	defer n.CloseConn(TCPConnection)
 
-	buffer := make([]byte, 1024, 1024)
+	buffer := make([]byte, 2048, 2048)
 
 	//etarnal for loop to handle listening to connections
 	for {

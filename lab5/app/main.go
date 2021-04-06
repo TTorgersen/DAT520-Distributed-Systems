@@ -81,7 +81,6 @@ func main() {
 		addrrr := addr[1].String()
 		splitAddr := strings.Split(addrrr, "/")
 		if conns.IP == splitAddr[0] {
-			
 			*id = conns.ID
 		} else {
 			fmt.Println("not it")
@@ -92,7 +91,7 @@ func main() {
 	/* 	aliveChannel := make(chan struct{}, 20000)
 	   	deadChannel := make(chan struct{}, 20000) */
 
-	thisNetwork, currConf, err := network.InitializeNetwork(netconf.Nodes, *id)
+	thisNetwork, err := network.InitializeNetwork(netconf.Nodes, *id)
 	check(err)
 	fmt.Println(thisNetwork.Myself.ID)
 

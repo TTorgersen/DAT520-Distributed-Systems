@@ -261,7 +261,7 @@ func dialUp(netconf network.Netconf, connections map[int]net.Conn, thisClient st
 
 func listenForConnectiontest(c net.Conn, rchan chan network.Message, connections map[int]net.Conn) (err error) {
 	defer c.Close()
-	buffer := make([]byte, 1024, 1024)
+	buffer := make([]byte, 2048, 2048)
 
 	for {
 		len, err := c.Read(buffer[0:])
