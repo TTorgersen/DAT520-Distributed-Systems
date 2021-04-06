@@ -130,7 +130,7 @@ func main() {
 
 	/* 	//as we dont have myself in the nodelist we need to append thatone too
 	   	nodeIDList = append(nodeIDList, thisNetwork.Myself.ID) */
-
+				// CHANGE NOT PERMANENT SOLUTION; JUST REMOVING CLIENT at position 0 from list
 	ld := detector.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
 
 	// step 4: initialize FD
@@ -170,7 +170,7 @@ func main() {
 	ldchange := ld.Subscribe()
 
 	if alive {
-		//start multiPax
+		//start multiPax  // CHANGE JEG GJØR EN ENDRING commenter out dette fjerner multipaxos hypotese
 		proposer.Start()
 		acceptor.Start()
 		learner.Start()
@@ -195,8 +195,8 @@ func main() {
 				Request: hb.Request,
 			}
 			thisNetwork.SendChannel <- sendHBMessage
-		case prp := <-prepareOut:
-			fmt.Println("Sends prepare out to network")
+		case prp := <-prepareOut: // CHANGE
+			fmt.Println("Sends prepare out to network", prp)
 			prpMsg := network.Message{
 				Type:    "Prepare",
 				From:    prp.From,
@@ -229,6 +229,7 @@ func main() {
 			}
 			thisNetwork.SendMessageBroadcast(lrnMsg, nrOfNodes)
 		case response := <-decidedOut:
+			fmt.Println("A VALUE HAS BEEN DECIDED ",response.Value)
 			resp := mp.Response{
 				ClientID:  response.Value.ClientID,
 				ClientSeq: response.Value.ClientSeq,
@@ -301,20 +302,20 @@ func main() {
 					//	fmt.Println("Active fd deliver heartbeat")
 					fd.DeliverHeartbeat(hb)
 				case msg.Type == "Prepare":
-					//fmt.Println("Deliver prepare to acceptor")
+					fmt.Println("Deliver prepare to acceptor")
 					acceptor.DeliverPrepare(msg.Prepare)
 				case msg.Type == "Promise":
-					//fmt.Println("Deliver promise to proposer")
+					fmt.Println("Deliver promise to proposer")
 					fmt.Println(msg.Promise)
 					proposer.DeliverPromise(msg.Promise)
 				case msg.Type == "Accept":
-					//	fmt.Println("Deliver accept to acceptor")
+						fmt.Println("Deliver accept to acceptor")
 					acceptor.DeliverAccept(msg.Accept)
 				case msg.Type == "Learn":
-					//fmt.Println("Deliver learn to learner")
+					fmt.Println("Deliver learn to learner")
 					learner.DeliverLearn(msg.Learn)
 				case msg.Type == "Value":
-					//	fmt.Println("Deliver value from client to proposer")
+						fmt.Println("Deliver value from client to proposer")
 					proposer.DeliverClientValue(msg.Value)
 				}
 

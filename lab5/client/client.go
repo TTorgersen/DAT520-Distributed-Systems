@@ -81,11 +81,12 @@ func main() {
 				if text[0:7] == "reconf " {
 					nrOfNewServers := text[7:]
 					fmt.Println("Reconfigure request received, new number of servers: ", nrOfNewServers)
-					msg := new(network.Message)
+					/* msg := new(network.Message)
 					msg.Value.Command = text
-					//nrOfServers, _ = strconv.Atoi(nrOfNewServers)
-					recieveEntireMessage <- *msg
-					continue
+					 *///nrOfServers, _ = strconv.Atoi(nrOfNewServers)
+					//recieveEntireMessage <- *msg
+
+					//continue
 				}
 			}
 			if text == "show seq" {
@@ -136,6 +137,10 @@ func main() {
 					responseRecieved = false
 				} else {
 					fmt.Println("Command can not be entered as no response to previous command has arrived")
+					fmt.Println("CODECHANGE, SENT ANYWAY DUE TO DEBUGGING")
+					newVal := mp.Value{ClientID: thisClient, ClientSeq: seq,
+						Command: text}
+					CSend <- newVal
 				}
 
 			}

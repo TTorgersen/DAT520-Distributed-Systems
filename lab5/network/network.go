@@ -123,6 +123,8 @@ func (n *Network) InitializeConnections() (err error) {
 	
 				//fmt.Printf("Dial via tcp to node %v success\n", node.TCPaddr)
 			}
+			//CHANGE 7
+			fmt.Println("TRYING TO SEND TCPDIAL", TCPDial)
 			go n.ListenForConnection(TCPDial)
 
 		// create a separate go routine in order to handle dial connections
@@ -150,12 +152,23 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	buffer := make([]byte, 2048, 2048)
 
 	//etarnal for loop to handle listening to connections
-	for {
-		len, _ := TCPConnection.Read(buffer[0:])
+	for { // CHANGE 8
+		len, err := TCPConnection.Read(buffer)
+		if err != nil{
+			continue
+		}
+		//fmt.Println("BUFFER 0, ", string(buffer))
 		message := new(Message)
-		err = json.Unmarshal(buffer[0:len], &message)
-		if check(err) {
-			return err
+		err = json.Unmarshal(buffer[:len], &message)
+		if check(err) { // CHANGE 5 HERE IT STRUGGLES
+			fmt.Println("STRUGGLING TO UNMARSHAL MESSAGE, TYPE", message.Type, " and message: |", message, "| MESSAGE STOP")
+			//CHANGE 9 THIS KEEPS THE CONNECTION IN PLACE ERR DOES NOT
+			continue
+			//return err
+		}
+		// CHANGE 6 
+		if message.Type != "Heartbeat"{
+		fmt.Println("MESSAGE SUCCESSFULLY RECIEVED, TYPE: ", message.Type)
 		}
 		n.RecieveChannel <- *message
 
@@ -222,11 +235,13 @@ func (n *Network) StartServer() (err error) {
 				fmt.Println("Client connections", n.ClientConnections)
 				fmt.Println("Servers connections", n.Connections)
 			} else {
+				
 				Mutex.Lock()
 				n.Connections[NodeID] = TCPaccept
 				Mutex.Unlock()
 				//fmt.Println("Accepted TCP from node ", NodeID)
 			}
+			fmt.Println("TRYING TO TCPACCEPT TOR CHANGE ", TCPaccept)
 			go n.ListenForConnection(TCPaccept)
 		}
 
@@ -238,7 +253,16 @@ func (n *Network) StartServer() (err error) {
 			case message := <-n.SendChannel:
 				switch {
 				case message.Type == "Response":
-					for _, conns := range n.ClientConnections {
+					messageByte, err := json.Marshal(message)
+						if err != nil {
+							log.Print(err)
+							continue
+						}
+						_, err = n.Connections[6].Write(messageByte)
+						if err != nil {
+							log.Print(err)
+						}
+					/* for _, conns := range n.ClientConnections {
 						messageByte, err := json.Marshal(message)
 						if err != nil {
 							log.Print(err)
@@ -248,7 +272,7 @@ func (n *Network) StartServer() (err error) {
 						if err != nil {
 							log.Print(err)
 						}
-					}
+					} */
 				case message.Type != "Response":
 					err := n.SendMessage(message)
 					if err != nil {
@@ -282,6 +306,8 @@ func (n *Network) SendMessage(message Message) (err error) {
 	}
 	messageByte, err := json.Marshal(message) 
 	if check(err) {
+		// CHANGE 3
+		fmt.Println("STRUGGLING TO MARSHALL MESSAGE", message)
 		return err
 	}
 	remoteConn := n.Connections[message.To]
@@ -290,7 +316,8 @@ func (n *Network) SendMessage(message Message) (err error) {
 		return fmt.Errorf("No connection to %v", message.To)
 	}
 	_, err = n.Connections[message.To].Write(messageByte)
-	if check(err) {
+	if check(err) { // CHANGE 4
+		fmt.Println("STRUGGLING TO WRITE MESSAGE", message, " Messagebyte: ", messageByte)
 		n.CloseConn(n.Connections[message.To])
 		return err
 	}
