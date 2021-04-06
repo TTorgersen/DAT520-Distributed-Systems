@@ -138,7 +138,7 @@ func main() {
 
 	//step 4.1 as failiuredetector requires a hb channel  we must create one
 	hbSend := make(chan detector.Heartbeat, 16)
-	fd := detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList, ld, 10*time.Second, hbSend)
+	fd := detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList[:defaultNrOfServers], ld, 10*time.Second, hbSend)
 
 	// step 3 and 4 complete, now we have a failiure detector
 	fmt.Println(fd)
@@ -147,7 +147,7 @@ func main() {
 	prepareOut := make(chan mp.Prepare, 2000000) //sendonly channel send prepare
 	acceptOut := make(chan mp.Accept, 2000000)   //Incoming accept
 	//adu -1 is initially
-	proposer := mp.NewProposer(thisNetwork.Myself.ID, len(nodeIDList), -1, ld, prepareOut, acceptOut)
+	proposer := mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, ld, prepareOut, acceptOut)
 
 	//Step 4.6 INIT acceptor
 	promiseOut := make(chan mp.Promise, 2000000) //send promises to other nodes
@@ -158,7 +158,7 @@ func main() {
 
 	//step 4.7 INIT learner
 	decidedOut := make(chan mp.DecidedValue, 2000000) //send values that has been learned
-	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList), decidedOut)
+	learner := mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
 	learnerList := currConf.Learners
 	learnerList = append(learnerList, *learner)
 
@@ -282,7 +282,7 @@ func main() {
 					alive = true
 
 					ld = detector.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
-					fd = detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList, ld, 10*time.Second, hbSend)
+					fd = detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList[:defaultNrOfServers], ld, 10*time.Second, hbSend)
 
 					learner = mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
 					proposer = mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, ld, prepareOut, acceptOut)
