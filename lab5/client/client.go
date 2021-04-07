@@ -282,12 +282,12 @@ func listenForConnectiontest(c net.Conn, rchan chan network.Message, connections
 			fmt.Print(err)
 			return err
 		}
-		msg := new(network.Message)
+		msg := network.Message{}
 		err = json.Unmarshal(buffer[0:len], &msg)
 		if err != nil {
 			fmt.Println(err)
 		}
-		rchan <- *msg
+		rchan <- msg
 	}
 
 }
@@ -312,7 +312,8 @@ func sendNetworkMessage(msg network.Message, connections map[int]net.Conn) (err 
 	return nil
 }
 func sendMessage(sendMsg mp.Value, connections map[int]net.Conn) (err error) {
-	msg := new(network.Message)
+	// changing new to other
+	msg := network.Message{}
 	msg.Type = "Value"
 	msg.Value = sendMsg
 	messageInBytes, err := json.Marshal(msg)
