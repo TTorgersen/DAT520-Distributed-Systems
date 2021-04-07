@@ -261,7 +261,7 @@ func main() {
 						Type: "reconf",
 						From: defaultNrOfServers, //we just use "from " because it is int
 					}
-
+					fmt.Println("Sending a broadcast message to ", nrOfNodes)
 					thisNetwork.SendMessageBroadcast(rMsg, nrOfNodes)
 
 					continue
@@ -270,8 +270,8 @@ func main() {
 			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type == "reconf" {
-
-				if *id < defaultNrOfServers {
+				fmt.Println("Reconfigure message recieved over network")
+				if *id < msg.From {
 					
 					alive = true
 					fmt.Println("Reconfigure request recieved, starting up server ID: ", *id)
