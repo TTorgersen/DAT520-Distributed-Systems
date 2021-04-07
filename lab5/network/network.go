@@ -162,15 +162,15 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
             break
           }
           continue
-        }
-        message := new(Message)
+        } // CHANGE FROM message := new(Message) to message:= Message{}
+        message := Message{}
 		//fmt.Println("message len: ", len)
         err = json.Unmarshal(buffer[:len], &message)
         if check(err) {
             return err
         }
         
-        n.RecieveChannel <- *message
+        n.RecieveChannel <- message
 	}
 	return nil
 }
