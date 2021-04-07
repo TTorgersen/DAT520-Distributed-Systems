@@ -153,6 +153,9 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
     for {
         var buffer [2048]byte
         len, err := TCPConnection.Read(buffer[:])
+		if len > 1000{
+			continue
+		}
         if err != nil {
           if strings.Contains(err.Error(), "use of closed network connection") {
             break
