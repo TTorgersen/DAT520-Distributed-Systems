@@ -285,7 +285,7 @@ func main() {
 					learner.Start()
 
 					ldchange = ld.Subscribe()
-
+					fmt.Println("Leader is", ld.Leader())
 					fd.Start()
 				} else {
 					alive = false

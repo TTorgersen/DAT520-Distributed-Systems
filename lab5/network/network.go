@@ -154,6 +154,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
         var buffer [2048]byte
         len, err := TCPConnection.Read(buffer[:])
 		if len > 1000{
+			fmt.Println("A clash has occured, skipping message, length: ", len)
 			continue
 		}
         if err != nil {
