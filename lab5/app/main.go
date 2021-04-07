@@ -246,7 +246,7 @@ func main() {
 			if len(response.Value.Command) > 6 {
 				if response.Value.Command[0:7] == "reconf " {
 					defaultNrOfServers, _ = strconv.Atoi(response.Value.Command[7:])
-					fmt.Println("Reconfigure request received, new number of servers: ", defaultNrOfServers)
+					fmt.Println("Reconfigure request decided, Stopping servers, new number: ", defaultNrOfServers)
 					learner.Stop()
 					proposer.Stop()
 					acceptor.Stop()
@@ -270,9 +270,11 @@ func main() {
 			thisNetwork.SendChannel <- resMsg
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type == "reconf" {
-				if *id < defaultNrOfServers {
-					alive = true
 
+				if *id < defaultNrOfServers {
+					
+					alive = true
+					fmt.Println("Reconfigure request recieved, starting up server ID: ", *id)
 					ld = detector.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
 					fd = detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList[:defaultNrOfServers], ld, 10*time.Second, hbSend)
 
