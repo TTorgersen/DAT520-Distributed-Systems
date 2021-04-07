@@ -271,7 +271,8 @@ func main() {
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type == "reconf" {
 				fmt.Println("Reconfigure message recieved over network")
-				if *id < msg.From {
+				defaultNrOfServers = msg.From
+				if *id < defaultNrOfServers {
 					
 					alive = true
 					fmt.Println("Reconfigure request recieved, starting up server ID: ", *id)
