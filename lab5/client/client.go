@@ -124,6 +124,7 @@ func main() {
 				fmt.Println("-------------------------------retry connections --------------- ")
 				fmt.Println("-------------------------------reconf nrOfServers -------------- ")
 				fmt.Println("---------------------------------------------------------------- ")
+				continue
 			}
 			if text == "show connections" {
 				fmt.Println(connections)

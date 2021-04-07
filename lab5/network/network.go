@@ -142,9 +142,37 @@ func check(err error) (errors bool) {
 
 }
 
+
+
+func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
+
+    // defers closing connection until the end
+    defer n.CloseConn(TCPConnection)
+
+    //etarnal for loop to handle listening to connections
+    for {
+        var buffer [2048]byte
+        len, err := TCPConnection.Read(buffer[:])
+        if err != nil {
+          if strings.Contains(err.Error(), "use of closed network connection") {
+            break
+          }
+          continue
+        }
+        message := new(Message)
+		fmt.Println("message len: ", len)
+        err = json.Unmarshal(buffer[:len], &message)
+        if check(err) {
+            return err
+        }
+        
+        n.RecieveChannel <- *message
+	}
+	return nil
+}
 //ListenForConnection shall be initialized in a separate go routine
 // in order
-func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
+/* func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 
 	// defers closing connection until the end
 	defer n.CloseConn(TCPConnection)
@@ -174,7 +202,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 
 	}
 }
-
+ */
 //Mutex to lock and unlock go routine
 var Mutex = &sync.Mutex{}
 
@@ -258,10 +286,14 @@ func (n *Network) StartServer() (err error) {
 							log.Print(err)
 							continue
 						}
-						_, err = n.Connections[6].Write(messageByte)
+						_, err = n.Connections[7].Write(messageByte)
 						if err != nil {
 							log.Print(err)
 						}
+						//_, err = n.Connections[8].Write(messageByte)
+						//if err != nil {
+						//	log.Print(err)
+						//}
 					/* for _, conns := range n.ClientConnections {
 						messageByte, err := json.Marshal(message)
 						if err != nil {
