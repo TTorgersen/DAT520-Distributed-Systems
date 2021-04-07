@@ -164,7 +164,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
           continue
         }
         message := new(Message)
-		fmt.Println("message len: ", len)
+		//fmt.Println("message len: ", len)
         err = json.Unmarshal(buffer[:len], &message)
         if check(err) {
             return err
@@ -230,7 +230,7 @@ func (n *Network) findRemoteAdrress(TCPConnection *net.TCPConn) (NodeID int) {
 	RemoteIPPort := strings.Split(RemoteSocket.String(), ":")
 	RemotePort := RemoteIPPort[0]
 	//portInt, _ := strconv.Atoi(RemotePort)
-	fmt.Println("the nodes in remote", n.Nodes)
+	//fmt.Println("the nodes in remote", n.Nodes)
 	for _, node := range n.Nodes {
 		print(node.IP, RemotePort)
 		if node.IP == RemotePort {
@@ -290,6 +290,7 @@ func (n *Network) StartServer() (err error) {
 							log.Print(err)
 							continue
 						}
+						// IKKE DENNE WRITE MEST SANNSYNLIG da vi ville fått problem på client
 						_, err = n.Connections[7].Write(messageByte)
 						if err != nil {
 							log.Print(err)
