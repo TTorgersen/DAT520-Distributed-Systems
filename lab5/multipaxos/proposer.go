@@ -106,7 +106,14 @@ func (p *Proposer) Start() {
 				p.nextSlot = p.adu + 1
 				p.acceptsOut.Init()
 				p.phaseOneDone = true
+				
 				fmt.Println("phase1 is true")
+				fmt.Println("quorum: ", p.quorum)
+				fmt.Println("Nr of nodes: ", p.n)
+				fmt.Println("Current round: ", p.crnd)
+				fmt.Println("Output: ", output)
+				fmt.Println("Accepts: ", accepts)
+
 				for _, acc := range accepts {
 					p.acceptsOut.PushBack(acc)
 				}
@@ -138,6 +145,8 @@ func (p *Proposer) Start() {
 				}
 			case leader := <-trustMsgs:
 				fmt.Println("Leader got trust message")
+				fmt.Println("leader: ", leader)
+
 				p.leader = leader
 				if leader == p.id {
 					fmt.Println("Starting phase 1")
@@ -154,7 +163,16 @@ func (p *Proposer) Start() {
 func (p *Proposer) Stop() {
 	p.stop <- struct{}{}
 }
+func (p *Proposer) Crnd() Round {
+	return p.crnd
+}
+func (p *Proposer) Leader() int {
+	return p.leader
+}
 
+func (p *Proposer) SetCrnd(newCrnd Round) {
+	p.crnd = newCrnd
+}
 // DeliverPromise delivers promise prm to proposer p.
 func (p *Proposer) DeliverPromise(prm Promise) {
 	p.promiseIn <- prm

@@ -62,10 +62,11 @@ type Message struct {
 	Value        mp.Value        //value msg
 	Response     mp.Response     //response msg
 	Decidedvalue mp.DecidedValue //decidedvalue
-	Reconf       mp.Reconf
+	//Reconf       mp.Reconf
 	ClientIP  string       //client infor
 	Alive		bool  //should node be alive or not
 	Heartbeat fd.Heartbeat //heartbeat msg
+	Rnd 		mp.Round
 }
 
 var Mutex = &sync.Mutex{}

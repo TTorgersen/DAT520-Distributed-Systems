@@ -5,6 +5,7 @@ import (
 	fd "dat520/lab3/failuredetector"
 	ld "dat520/lab3/leaderdetector"
 	mp "dat520/lab5/multipaxos"
+	bh "dat520/lab5/bankhandler"
 	"dat520/lab5/network"
 	"encoding/json"
 	"flag"
@@ -172,6 +173,8 @@ func main() {
 	decidedOut := make(chan mp.DecidedValue, 2000000) //send values that has been learned
 	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList[:defaultNrOfServers]), decidedOut)
 
+	responseOut := make(chan mp.Response, 2000000)
+	bankhandler := bh.NewBankHandler(responseOut, proposer)
 	// start up the network
 	thisNetwork.Dial()
 	thisNetwork.StartServer()
@@ -182,6 +185,7 @@ func main() {
 		updateMsg := network.Message{
 			Type:      "statusUpdate",
 			From: *id,
+			
 		}
 		thisNetwork.SendMessageBroadcast(updateMsg, []int{0,1,2,3,4,5,6})
 	}else{
@@ -197,6 +201,9 @@ func main() {
 			if msg.Type =="statusResponse"{
 				fmt.Println("status response recieved, defaultNrOfServers: ", msg.From)
 				defaultNrOfServers = msg.From
+				proposer.SetCrnd(msg.Rnd)
+				
+				fmt.Println("Crnd Recieved: ", proposer.Crnd())
 				statusRecieved = true
 			}
 		}
@@ -287,22 +294,55 @@ func main() {
 			}
 			thisNetwork.SendMessageBroadcast(lrnMsg, nodeIDList[:defaultNrOfServers])
 		// make response message and send to client
-		case response := <-decidedOut:
-			fmt.Println("A VALUE HAS BEEN DECIDED ",response.Value)
+		case decided := <-decidedOut:
+		//		fmt.Println("This has been decided ", decided.Value)
+			if len(decided.Value.ClientID) >= 6 {
+				
+				if decided.Value.ClientID[0:7] == "reconf " {
+					
+					defaultNrOfServers, _ = strconv.Atoi(decided.Value.ClientID[7:])
+					fmt.Println("Reconfigure request decided, Stopping servers, new number: ", defaultNrOfServers)
+					learner.Stop()
+					proposer.Stop()
+					acceptor.Stop()
+					failuredetector.Stop()
+					alive = false // just testing for fun 
+					rMsg := network.Message{
+						Type: "reconf",
+						From: defaultNrOfServers, //we just use "from " because it is int
+						// HER KAN VI OGSÅ SENDE CURRENT DATA
+					}
+					fmt.Println("Sending a broadcast message to ", nodeIDList[:defaultNrOfServers])
+					thisNetwork.SendMessageBroadcast(rMsg, nodeIDList[:defaultNrOfServers])
+					
+					fmt.Println("Sends response to client")
+					thisNetwork.SendMessage(rMsg)
+
+					//continue
+				}else{
+					bankhandler.HandleDecidedValue(decided)
+				}
+			}else{
+				bankhandler.HandleDecidedValue(decided)
+			}
+		case response := <-responseOut:
+			//fmt.Println("A VALUE HAS BEEN DECIDED ",response)
 			resp := mp.Response{
-				ClientID:  response.Value.ClientID,
-				ClientSeq: response.Value.ClientSeq,
-				Command:   response.Value.Command,
+				ClientID:  response.ClientID,
+				ClientSeq: response.ClientSeq,
+				TxnRes: response.TxnRes,
 			}
 			resMsg := network.Message{
 				Type:     "Response",
 				Response: resp,
-				ClientIP: response.Value.ClientID,
+				ClientIP: response.ClientID,
 			}
+			// Y DO
+			//proposer.IncrementAllDecidedUpTo()
 			
-			proposer.IncrementAllDecidedUpTo()
-			
-			if len(response.Value.Command) > 6 {
+			fmt.Println("Sends response to client")
+			thisNetwork.SendMessage(resMsg)
+		/* 	if len(response.Value.Command) > 6 {
 				if response.Value.Command[0:7] == "reconf " {
 					defaultNrOfServers, _ = strconv.Atoi(response.Value.Command[7:])
 					fmt.Println("Reconfigure request decided, Stopping servers, new number: ", defaultNrOfServers)
@@ -322,10 +362,8 @@ func main() {
 					//continue
 				}
 			}
+ */
 
-
-			fmt.Println("Sends response to client")
-			thisNetwork.SendMessage(resMsg)
 		// message on network to on self
 		case msg := <-thisNetwork.RecieveChannel:
 			if msg.Type == "statusUpdate"{
@@ -335,6 +373,7 @@ func main() {
 						Type:      "statusResponse",
 						From: defaultNrOfServers,
 						To: msg.From,
+						Rnd: proposer.Crnd(),
 					}
 					thisNetwork.SendMessage(responseMsg)
 				}
@@ -383,19 +422,22 @@ func main() {
 				case msg.Type == "Prepare":
 					acceptor.DeliverPrepare(msg.Prepare)
 				case msg.Type == "Promise":
-					fmt.Println("Deliver promise to proposer")
+					//fmt.Println("Deliver promise to proposer")
 					proposer.DeliverPromise(msg.Promise)
 				case msg.Type == "Accept":
-					fmt.Println("Deliver accept to acceptor")
+					//fmt.Println("Deliver accept to acceptor")
 					acceptor.DeliverAccept(msg.Accept)
 				case msg.Type == "Learn":
-					fmt.Println("Deliver learn to learner")
+					//fmt.Println("Deliver learn to learner")
 					learner.DeliverLearn(msg.Learn)
 				case msg.Type == "Value":
 					
 					fmt.Println("Deliver value from client to proposer")
-					if msg.Value.Command == "leader"{
-						fmt.Println("Current leader: ",leaderdetector.CurrentLeader)
+					if msg.Value.ClientID == "leader"{
+					
+						fmt.Println("Current leader leaderdetector: ",leaderdetector.CurrentLeader)
+						fmt.Println("Current leader proposer: ", proposer.Leader())
+			
 					}else if msg.Value.Command =="showhb" {
 							showHB = !showHB
 						

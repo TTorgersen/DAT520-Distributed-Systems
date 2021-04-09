@@ -1,8 +1,9 @@
 package multipaxos
 
-import "fmt"
-
-// Type definitions - DO NOT EDIT
+import (
+	"dat520/lab5/bank"
+	"fmt"
+)
 
 // SlotID represents an identifier for a Multi-Paxos consensus instance.
 type SlotID int
@@ -32,10 +33,12 @@ const NoRound Round = -1
 //
 // Msg: String message
 type Value struct {
-	ClientID  string
-	ClientSeq int
-	Noop      bool
-	Command   string
+	ClientID   string
+	ClientSeq  int
+	Noop       bool
+	Command    string
+	AccountNum int
+	Txn        bank.Transaction
 }
 
 // String returns a string representation of value v.
@@ -43,8 +46,8 @@ func (v Value) String() string {
 	if v.Noop {
 		return fmt.Sprintf("No-op value")
 	}
-	return fmt.Sprintf("Value{ClientID: %s, ClientSeq: %d, Command: %s}",
-		v.ClientID, v.ClientSeq, v.Command)
+	return fmt.Sprintf("Value{ClientID: %s, ClientSeq: %d, AccountNr: %d, Txn: %v}",
+		v.ClientID, v.ClientSeq, v.AccountNum, v.Txn)
 }
 
 // Response represents a response that can be chosen using the Multi-Paxos algorithm and
@@ -58,13 +61,13 @@ func (v Value) String() string {
 type Response struct {
 	ClientID  string
 	ClientSeq int
-	Command   string
+	TxnRes    bank.TransactionResult
 }
 
 // String returns a string representation of response r.
 func (r Response) String() string {
 	return fmt.Sprintf("Response{ClientID: %s, ClientSeq: %d, Command: %s}",
-		r.ClientID, r.ClientSeq, r.Command)
+		r.ClientID, r.ClientSeq, r.TxnRes)
 }
 
 // Message definitions - DO NOT EDIT
@@ -142,27 +145,25 @@ type DecidedValue struct {
 	Value  Value
 }
 
-//Reconf info
-type Reconf struct {
-	Val Value
-}
-
 // Testing utilities - DO NOT EDIT
 
 var (
 	testingValueOne = Value{
-		ClientID:  "1234",
-		ClientSeq: 42,
-		Command:   "ls",
+		ClientID:   "1234",
+		ClientSeq:  42,
+		AccountNum: 3,
+		Txn:        bank.Transaction{Op: bank.Balance},
 	}
 	testingValueTwo = Value{
-		ClientID:  "5678",
-		ClientSeq: 99,
-		Command:   "rm",
+		ClientID:   "5678",
+		ClientSeq:  99,
+		AccountNum: 5,
+		Txn:        bank.Transaction{Op: bank.Deposit, Amount: 1000},
 	}
 	testingValueThree = Value{
-		ClientID:  "1369",
-		ClientSeq: 4,
-		Command:   "mkdir",
+		ClientID:   "1369",
+		ClientSeq:  4,
+		AccountNum: 7,
+		Txn:        bank.Transaction{Op: bank.Withdrawal, Amount: 1000},
 	}
 )
