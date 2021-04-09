@@ -98,6 +98,7 @@ func (p *Proposer) Start() {
 		for {
 			select {
 			case prm := <-p.promiseIn:
+				//fmt.Println("Promise received")
 				accepts, output := p.handlePromise(prm)
 				if !output {
 					continue
@@ -130,12 +131,16 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case <-p.phaseOneProgressTicker.C:
+				//fmt.Println("Got into the phase one chanel")
 				if p.id == p.leader && !p.phaseOneDone {
+					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case leader := <-trustMsgs:
+				fmt.Println("Leader got trust message")
 				p.leader = leader
 				if leader == p.id {
+					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case <-p.stop:

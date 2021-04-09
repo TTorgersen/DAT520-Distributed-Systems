@@ -1,6 +1,5 @@
 package multipaxos
 
-
 // Learner represents a learner as defined by the Multi-Paxos algorithm.
 type Learner struct { // TODO(student): algorithm and distributed implementation
 	// Add needed fields
@@ -98,5 +97,3 @@ func (l *Learner) handleLearn(learn Learn) (val Value, sid SlotID, output bool) 
 	}
 	return val, sid, false
 }
-
-// TODO(student): Add any other unexported methods needed.

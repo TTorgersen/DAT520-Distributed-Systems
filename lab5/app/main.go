@@ -1,14 +1,16 @@
 package main
 
 import (
-	detector "dat520/lab3/detector"
+	//detector "dat520/lab3/detector"
+	fd "dat520/lab3/failuredetector"
+	ld "dat520/lab3/leaderdetector"
 	mp "dat520/lab5/multipaxos"
 	"dat520/lab5/network"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
+	//"log"
 	"net"
 	"os"
 	"sort"
@@ -36,7 +38,7 @@ var (
 	)
 	delay = flag.Int(
 		"delay",
-		1000,
+		5000,
 		"Delay used by Increasing Timout failuredetector in milliseconds",
 	)
 )
@@ -57,6 +59,7 @@ func main() {
 	}
 
 	alive := true
+	showHB := false
 	// step 1: get network configuration
 
 	//1.1 get network configuration file
@@ -65,6 +68,7 @@ func main() {
 	defer netconfigureFile.Close()
 
 	defaultNrOfServers := 3
+
 	//1.2 Read the network config file as byte array
 	byteVal, _ := ioutil.ReadAll(netconfigureFile)
 
@@ -73,112 +77,362 @@ func main() {
 	err = json.Unmarshal(byteVal, &netconf)
 	check(err)
 
+	// splitting netconf in servers and clients
+	var netconfServers network.Netconf
+	netconfServers.Nodes= netconf.Nodes[:6]
+	netconfServers.Myself= netconf.Myself
+
+	var netconfClients network.Netconf
+	netconfClients.Nodes = netconf.Nodes[6:]
+	netconfClients.Myself =netconf.Myself
+
+	var myaddress network.Node
 	//1.3 Now netconf has the info from json file, step 1 complete
 	//Nødvendig for å hjelpe docker å finne rett node ut fra IP den får
-	fmt.Println(netconf)
+	fmt.Println(netconfServers)
 	addr, _ := net.InterfaceAddrs()
-	for _, conns := range netconf.Nodes {
+	for _, conns := range netconfServers.Nodes {
 		addrrr := addr[1].String()
 		splitAddr := strings.Split(addrrr, "/")
 		if conns.IP == splitAddr[0] {
 			*id = conns.ID
+			myaddress = netconfServers.Nodes[conns.ID]
+			
 		} else {
 			fmt.Println("not it")
 		}
 
 	}
-	// step 2: initialize a empty network with channels
-	/* 	aliveChannel := make(chan struct{}, 20000)
-	   	deadChannel := make(chan struct{}, 20000) */
 
-	thisNetwork, err := network.InitializeNetwork(netconf.Nodes, *id)
+	selfAddress, err := net.ResolveTCPAddr("tcp",myaddress.IP +":"+strconv.Itoa(myaddress.Port))
 	check(err)
-	fmt.Println(thisNetwork.Myself.ID)
-
-	if *id >= defaultNrOfServers {
-		alive = false
-		fmt.Println(*id, " not connected waiting for signal")
-		/* 	for{
-		select {
-		case msg := <- thisNetwork.recieveChannel{
-			switch{
-			case msg.Type == Allive:
-
-			}
-			if (msg.Type == "Alive")
-				if(message.Alive){
-				aliveChannel <- struct{}{}
-				} else {
-				deadChannel <- struct{}{}
-			} */
-
+	fmt.Println("selfadress: ", selfAddress)
+	selfNode := network.Node{
+		ID:      *id,
+		IP:      selfAddress.IP.String(),
+		Port:    selfAddress.Port,
+		TCPaddr: selfAddress,
 	}
 
-	// step 2.1: now we have a network with tcp endpoints, all nodes present
+	nodes := []network.Node{}
+	for i, node := range netconfServers.Nodes {
+		fmt.Println(i, node.Port)
+		addr := node.IP +":"+ strconv.Itoa(node.Port)
+		a, err := net.ResolveTCPAddr("tcp", addr)
+		check(err)
+		if i != selfNode.ID {
+			nodes = append(nodes, network.Node{
+				ID:      i,
+				IP:      a.IP.String(),
+				Port:    a.Port,
+				TCPaddr: a,
+			})
+		}
+	}
+	fmt.Println("kommer vi hit")
+	// Initialize the network
+	thisNetwork := network.InitializeNetwork(nodes, selfNode)
+	
+	/* if *id >= defaultNrOfServers {
+		alive = false
+		fmt.Println(alive)
+		fmt.Println(*id, " not connected waiting for signal")
+		
 
-	// step 3: Initialize LD
+	} */
 
-	// step 3.1: in order to Init Leaderdetector we need a list of all nodes present
 	nodeIDList := []int{*id}
 	for _, node := range thisNetwork.Nodes {
 		nodeIDList = append(nodeIDList, node.ID)
 	}
 
-	//sorter meg
+	// ______________________________ linje 103 oystein 
 	sort.Ints(nodeIDList)
-	fmt.Println("These are the nodes you are looking for.. ", nodeIDList)
+	fmt.Println("These are the nodes you are looking for.. ", nodeIDList[:defaultNrOfServers])
+	
+	
+	// Set up leader and failuredetector
+	hbSend := make(chan fd.Heartbeat, 16)
+	leaderdetector := ld.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
+	failuredetector := fd.NewEvtFailureDetector(*id, nodeIDList[:defaultNrOfServers], leaderdetector, time.Duration(*delay)*time.Millisecond, hbSend)
+	
 
-	/* 	//as we dont have myself in the nodelist we need to append thatone too
-	   	nodeIDList = append(nodeIDList, thisNetwork.Myself.ID) */
-				// CHANGE NOT PERMANENT SOLUTION; JUST REMOVING CLIENT at position 0 from list
-	ld := detector.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
-
-	// step 4: initialize FD
-
-	//step 4.1 as failiuredetector requires a hb channel  we must create one
-	hbSend := make(chan detector.Heartbeat, 16)
-	fd := detector.NewEvtFailureDetector(thisNetwork.Myself.ID, nodeIDList[:defaultNrOfServers], ld, 10*time.Second, hbSend)
-
-	// step 3 and 4 complete, now we have a failiure detector
-	fmt.Println(fd)
-
-	//step 4.5 : INIT MULTIPAXOS proposer
+	// Set up multipaxos
+	//INIT MULTIPAXOS proposer
 	prepareOut := make(chan mp.Prepare, 2000000) //sendonly channel send prepare
 	acceptOut := make(chan mp.Accept, 2000000)   //Incoming accept
 	//adu -1 is initially
-	proposer := mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, ld, prepareOut, acceptOut)
+	proposer := mp.NewProposer(thisNetwork.Myself.ID, len(nodeIDList[:defaultNrOfServers]), -1, leaderdetector, prepareOut, acceptOut)
 
 	//Step 4.6 INIT acceptor
 	promiseOut := make(chan mp.Promise, 2000000) //send promises to other nodes
 	learnOut := make(chan mp.Learn, 2000000)     //send learn to other nodes
 	acceptor := mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
-
 	//step 4.7 INIT learner
 	decidedOut := make(chan mp.DecidedValue, 2000000) //send values that has been learned
-	learner := mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
+	learner := mp.NewLearner(thisNetwork.Myself.ID, len(nodeIDList[:defaultNrOfServers]), decidedOut)
 
-	//fmt.Printf("The acceptors are %v, and the learners are %v", acceptorList, learnerList)
-
-	// Append learner and acceptors to list?
-	// step 5: Initialize connections
-	// step 6: start server
-	fmt.Println("Trying to init connections")
-	thisNetwork.InitializeConnections()
+	// start up the network
+	thisNetwork.Dial()
 	thisNetwork.StartServer()
-	fmt.Println("Started server, we good")
-	nrOfNodes := []int{0, 1, 2}
-	ldchange := ld.Subscribe()
+	
+	fmt.Println("Asking for status update")
+	statusRecieved := false
+	if len(thisNetwork.Connections) > 0{
+		updateMsg := network.Message{
+			Type:      "statusUpdate",
+			From: *id,
+		}
+		thisNetwork.SendMessageBroadcast(updateMsg, []int{0,1,2,3,4,5,6})
+	}else{
+		fmt.Println("No servers in reach, continuing")
+		statusRecieved = true
+	}
+	for{
+		if statusRecieved{break}
+		select{
+		case msg := <-thisNetwork.RecieveChannel:
+			fmt.Println("message recieved")
 
+			if msg.Type =="statusResponse"{
+				fmt.Println("status response recieved, defaultNrOfServers: ", msg.From)
+				defaultNrOfServers = msg.From
+				statusRecieved = true
+			}
+		}
+		
+	}
+	//for conn 
+	//write statusupdate
+
+	//defaultNrOfServers = answer
+
+	
+	if *id >= defaultNrOfServers {
+		alive = false
+		fmt.Println(alive)
+		fmt.Println(*id, " not connected waiting for signal")
+		
+
+	}
+	ldchange := leaderdetector.Subscribe()
+
+	if alive{
+	failuredetector.Start()
+	// Start multipaxos
+	proposer.Start()
+	acceptor.Start()
+	learner.Start()
+
+	
+
+	fmt.Println("Starting server: ", selfAddress, " With id: ", *id)
+	
+
+	//go subscribePrinter(leaderdetector.Subscribe())
+	}
+	for {
+		time.Sleep(100 * time.Millisecond)
+		select {
+		case newL := <- ldchange:
+			if alive{
+			fmt.Println("new leader is ", newL)
+			}
+		// make heartbeat message and send to receiver
+		case hb := <-hbSend:
+			hbMsg := network.Message{
+				Type:      "Heartbeat",
+				From:      hb.From,
+				To:        hb.To,
+				Heartbeat: hb,
+			}
+			
+			thisNetwork.SendMessage(hbMsg)
+		// make prepare message and send to network
+		case prp := <-prepareOut:
+			//fmt.Println("Sends prepare out to network")
+			prpMsg := network.Message{
+				Type:    "Prepare",
+				From:    prp.From,
+				Prepare: prp,
+			}
+			fmt.Println("Trying to send message to ", nodeIDList[:defaultNrOfServers])
+			thisNetwork.SendMessageBroadcast(prpMsg, nodeIDList[:defaultNrOfServers])
+		// make accept message and send to network
+		case acc := <-acceptOut:
+			//fmt.Println("Sends accept out to network")
+			accMsg := network.Message{
+				Type:   "Accept",
+				From:   acc.From,
+				Accept: acc,
+			}
+			thisNetwork.SendMessageBroadcast(accMsg, nodeIDList[:defaultNrOfServers])
+		// make promise message and send to receiver
+		case prm := <-promiseOut:
+			//fmt.Println("Sends promise out to network")
+			prmMsg := network.Message{
+				Type:    "Promise",
+				To:      prm.To,
+				From:    prm.From,
+				Promise: prm,
+			}
+			thisNetwork.SendMessage(prmMsg)
+		// make learn message and send to network
+		case lrn := <-learnOut:
+			//fmt.Println("Sends learn out to network")
+			lrnMsg := network.Message{
+				Type:  "Learn",
+				From:  lrn.From,
+				Learn: lrn,
+			}
+			thisNetwork.SendMessageBroadcast(lrnMsg, nodeIDList[:defaultNrOfServers])
+		// make response message and send to client
+		case response := <-decidedOut:
+			fmt.Println("A VALUE HAS BEEN DECIDED ",response.Value)
+			resp := mp.Response{
+				ClientID:  response.Value.ClientID,
+				ClientSeq: response.Value.ClientSeq,
+				Command:   response.Value.Command,
+			}
+			resMsg := network.Message{
+				Type:     "Response",
+				Response: resp,
+				ClientIP: response.Value.ClientID,
+			}
+			
+			proposer.IncrementAllDecidedUpTo()
+			
+			if len(response.Value.Command) > 6 {
+				if response.Value.Command[0:7] == "reconf " {
+					defaultNrOfServers, _ = strconv.Atoi(response.Value.Command[7:])
+					fmt.Println("Reconfigure request decided, Stopping servers, new number: ", defaultNrOfServers)
+					learner.Stop()
+					proposer.Stop()
+					acceptor.Stop()
+					failuredetector.Stop()
+					alive = false // just testing for fun 
+					rMsg := network.Message{
+						Type: "reconf",
+						From: defaultNrOfServers, //we just use "from " because it is int
+						// HER KAN VI OGSÅ SENDE CURRENT DATA
+					}
+					fmt.Println("Sending a broadcast message to ", nodeIDList)
+					thisNetwork.SendMessageBroadcast(rMsg, nodeIDList)
+
+					//continue
+				}
+			}
+
+
+			fmt.Println("Sends response to client")
+			thisNetwork.SendMessage(resMsg)
+		// message on network to on self
+		case msg := <-thisNetwork.RecieveChannel:
+			if msg.Type == "statusUpdate"{
+				if *id == leaderdetector.CurrentLeader{
+					fmt.Println("Responding to statusUpdate")
+					responseMsg := network.Message{
+						Type:      "statusResponse",
+						From: defaultNrOfServers,
+						To: msg.From,
+					}
+					thisNetwork.SendMessage(responseMsg)
+				}
+			}
+			if msg.Type == "reconf" {
+				fmt.Println("Reconfigure message recieved over network")
+				defaultNrOfServers = msg.From
+				if *id < defaultNrOfServers {
+						//sleeping addon
+						time.Sleep(time.Duration(thisNetwork.Myself.ID) * time.Millisecond)
+
+						leaderdetector = ld.NewMonLeaderDetector(nodeIDList[:defaultNrOfServers])
+						failuredetector = fd.NewEvtFailureDetector(*id, nodeIDList[:defaultNrOfServers], leaderdetector, time.Duration(*delay)*time.Millisecond, hbSend)
+					
+					alive = true
+					fmt.Println("Reconfigure request recieved, starting up server ID: ", *id)
+				
+
+					learner = mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
+					proposer = mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, leaderdetector, prepareOut, acceptOut)
+					acceptor = mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
+
+					proposer.Start()
+					acceptor.Start()
+					learner.Start()
+
+					fmt.Println("Starting server: ", selfAddress, " With id: ", *id)
+
+					
+					ldchange = leaderdetector.Subscribe()
+					failuredetector.Start()
+
+					//go subscribePrinter(leaderdetector.Subscribe())
+				} else {
+					alive = false
+				}
+			} 
+			if alive {
+				
+				switch {
+				case msg.Type == "Heartbeat":
+					if showHB{
+						fmt.Println(msg.Heartbeat)
+					}
+					failuredetector.DeliverHeartbeat(msg.Heartbeat)
+				case msg.Type == "Prepare":
+					acceptor.DeliverPrepare(msg.Prepare)
+				case msg.Type == "Promise":
+					fmt.Println("Deliver promise to proposer")
+					proposer.DeliverPromise(msg.Promise)
+				case msg.Type == "Accept":
+					fmt.Println("Deliver accept to acceptor")
+					acceptor.DeliverAccept(msg.Accept)
+				case msg.Type == "Learn":
+					fmt.Println("Deliver learn to learner")
+					learner.DeliverLearn(msg.Learn)
+				case msg.Type == "Value":
+					
+					fmt.Println("Deliver value from client to proposer")
+					if msg.Value.Command == "leader"{
+						fmt.Println("Current leader: ",leaderdetector.CurrentLeader)
+					}else if msg.Value.Command =="showhb" {
+							showHB = !showHB
+						
+					}else{
+					proposer.DeliverClientValue(msg.Value)
+					}
+				case msg.Type == "Responce":
+					fmt.Println(msg.Response)
+				}
+			}
+		}
+	}
+}
+func subscribePrinter(sub <-chan int) {
+	for {
+		fmt.Print(<-sub)
+		fmt.Println(" Leader change")
+	}
+}
+
+func check(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal error: %s\n", err.Error())
+		os.Exit(1)
+	}
+}
+/*
 	if alive {
 		//start multiPax  // CHANGE JEG GJØR EN ENDRING commenter out dette fjerner multipaxos hypotese
-		proposer.Start()
-		acceptor.Start()
-		learner.Start()
+		//proposer.Start()
+		//acceptor.Start()
+		//learner.Start()
 
-		fmt.Println("Leader is", ld.Leader())
-		fd.Start()
+		//fmt.Println("Leader is", ld.Leader())
+		//fd.Start()
 	}
-	//reconfChann := make(chan network.Message, 2000000)
+	/* //reconfChann := make(chan network.Message, 2000000)
 	for {
 
 		select {
@@ -348,7 +602,7 @@ func main() {
 				}
 				fmt.Println("new nodelist", nrOfNodes)
 
-				defaultNrOfServers = newNumber */
+				defaultNrOfServers = newNumber 
 
 			}
 		}
@@ -362,3 +616,4 @@ func check(err error) {
 		log.Print(err)
 	}
 }
+ */

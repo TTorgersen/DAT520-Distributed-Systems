@@ -82,8 +82,6 @@ func (a *Acceptor) DeliverAccept(acc Accept) {
 	a.AcceptChan <- acc
 }
 
-
-
 // Internal: handlePrepare processes prepare prp according to the Multi-Paxos
 // algorithm. If handling the prepare results in acceptor a emitting a
 // corresponding promise, then output will be true and prm contain the promise.
@@ -134,5 +132,3 @@ func (a *Acceptor) handleAccept(acc Accept) (lrn Learn, output bool) {
 	}
 	return Learn{}, false
 }
-
-// TODO(student): Add any other unexported methods needed.

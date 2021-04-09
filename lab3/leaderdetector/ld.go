@@ -1,5 +1,7 @@
 package leaderdetector
 
+import "fmt"
+
 // A MonLeaderDetector represents a Monarchical Eventual Leader Detector as
 // described at page 53 in:
 // Christian Cachin, Rachid Guerraoui, and Luís Rodrigues: "Introduction to
@@ -71,9 +73,10 @@ func (m *MonLeaderDetector) Subscribe() <-chan int {
 // Change leader node
 func (m *MonLeaderDetector) ChangeLeader() bool {
 	leaderNode := UnknownID
-
+	fmt.Println("Looking for a leader in", m.nodeIDs)
+	fmt.Println("current suspected ", m.Suspected)
 	for _, node := range m.nodeIDs {
-		if node > leaderNode && m.Suspected[node] == false {
+		if node > leaderNode && m.Suspected[node] != true {
 			leaderNode = node
 		}
 	}
