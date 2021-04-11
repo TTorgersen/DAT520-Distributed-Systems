@@ -190,6 +190,8 @@ func (n *Network) SendMessageBroadcast(message Message, destination []int) {
 		n.SendMessage(message)
 	}
 }
+
+
 /* 
 //InitializeConnections will try to initiate connections with the servers
 //starting tcp server and initiate contact

@@ -305,6 +305,7 @@ func main() {
 					learner.Stop()
 					proposer.Stop()
 					acceptor.Stop()
+					currL :=  leaderdetector.CurrentLeader
 					failuredetector.Stop()
 					alive = false // just testing for fun 
 					rMsg := network.Message{
@@ -313,12 +314,16 @@ func main() {
 						// HER KAN VI OGSÅ SENDE CURRENT DATA
 					}
 					fmt.Println("Sending a broadcast message to ", nodeIDList[:defaultNrOfServers])
-					thisNetwork.SendMessageBroadcast(rMsg, nodeIDList[:defaultNrOfServers])
+					if *id == currL{
+						thisNetwork.SendMessageBroadcast(rMsg, nodeIDList[:defaultNrOfServers])
+						fmt.Println("I am leader, I send reconf msg to servers")
+						
+					}
 					
-					fmt.Println("Sends response to client")
-					thisNetwork.SendMessage(rMsg)
+					
+					
 
-					//continue
+					continue
 				}else{
 					fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(decided.SlotID)+", and value: ", decided.Value.String())
 					bankhandler.HandleDecidedValue(decided)
@@ -397,7 +402,7 @@ func main() {
 					learner = mp.NewLearner(thisNetwork.Myself.ID, defaultNrOfServers, decidedOut)
 					proposer = mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, leaderdetector, prepareOut, acceptOut)
 					acceptor = mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
-
+					bankhandler = bh.NewBankHandler(responseOut, proposer)
 					proposer.Start()
 					acceptor.Start()
 					learner.Start()
@@ -409,6 +414,10 @@ func main() {
 					leaderdetector.ChangeLeader()
 					failuredetector.Start()
 
+					
+					thisNetwork.Dial()
+					showHB = true
+
 					//go subscribePrinter(leaderdetector.Subscribe())
 				} else {
 					alive = false
@@ -418,7 +427,7 @@ func main() {
 				
 				switch {
 				case msg.Type == "Heartbeat":
-					
+					if showHB == true{fmt.Println(msg.Heartbeat)}
 					//fmt.Println(msg.Heartbeat)
 					failuredetector.DeliverHeartbeat(msg.Heartbeat)
 				case msg.Type == "Prepare":
@@ -434,16 +443,17 @@ func main() {
 					learner.DeliverLearn(msg.Learn)
 				case msg.Type == "Value":
 					
-					fmt.Println("Deliver value from client to proposer", msg.Value.ClientID)
-					if msg.Value.ClientID == "leader"{
+					
+					if msg.Value.ClientID == "leader "{
 					
 						fmt.Println("Current leader leaderdetector: ",leaderdetector.CurrentLeader)
 						fmt.Println("Current leader proposer: ", proposer.Leader())
 			
-					}else if msg.Value.Command =="showhb" {
+					}else if msg.Value.ClientID =="showhb " {
 							showHB = !showHB
 						
 					}else{
+					fmt.Println("Deliver value from client to proposer", msg.Value)
 					proposer.DeliverClientValue(msg.Value)
 					}
 				case msg.Type == "Responce":

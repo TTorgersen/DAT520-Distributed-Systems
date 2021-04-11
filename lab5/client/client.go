@@ -86,8 +86,8 @@ func main() {
 			//fmt.Print("--> ")
 			//text, _ := reader.ReadString('\n')
 			input := scanner.Text()
-			leaderQ := false
-			if input == "leader"{
+			leaderQ := false // COMMAND REQUIRES leader with Space after leader
+			if input == "leader " || input == "showhb "{
 				leaderQ = true
 			}
 			if len(input) > 6 {
@@ -109,7 +109,7 @@ func main() {
 					fmt.Println("Valmsg", valMsg)
 					fmt.Println("Sending reconf msg", valMsg.Value)
 					SendMessage(connections, valMsg)
-					fmt.Println("Sending reconf msg", valMsg.Value.Command)
+					fmt.Println("Sending reconf msg", valMsg.Value.ClientID)
 				} else {
 					val, err := inputToValue(input)
 					
