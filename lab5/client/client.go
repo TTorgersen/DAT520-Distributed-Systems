@@ -71,7 +71,7 @@ func main() {
 	receiveChan := make(chan network.Message, 2000000)
 	connections := Dial(nodes, receiveChan)
 
-	seq := 0
+	//seq := 0
 
 	fmt.Println("Starting client on ip: " + ip.String())
 	// Go function to receive input from terminal
@@ -87,19 +87,19 @@ func main() {
 			//text, _ := reader.ReadString('\n')
 			input := scanner.Text()
 			leaderQ := false // COMMAND REQUIRES leader with Space after leader
-			if input == "leader " || input == "showhb "{
+			if input == "leader " || input == "showhb " || input == "status"{
 				leaderQ = true
 			}
 			if len(input) > 6 {
-				
-				if  leaderQ|| input[0:7] == "reconf " {
+
+				if leaderQ || input[0:7] == "reconf " {
 					//input = input[:len(input)-1]
 					confNr := input[7:]
 					myVal := mp.Value{
-						ClientID: input,
-						 ClientSeq: seq,
-						 AccountNum: 0,
-						Command: confNr}
+						ClientID:   input,
+						ClientSeq:  seq,
+						AccountNum: 0,
+						Command:    confNr}
 					fmt.Println(myVal)
 					valMsg := network.Message{
 						Type:  "Value",
@@ -112,7 +112,7 @@ func main() {
 					fmt.Println("Sending reconf msg", valMsg.Value.ClientID)
 				} else {
 					val, err := inputToValue(input)
-					
+
 					fmt.Println("sending normal val", val)
 					if err != nil {
 						fmt.Println(err)
@@ -126,7 +126,7 @@ func main() {
 				}
 			} else {
 				val, err := inputToValue(input)
-				
+
 				fmt.Println("sending normal val", val)
 				if err != nil {
 					fmt.Println(err)
@@ -151,10 +151,13 @@ func main() {
 		} */
 	}()
 	for {
+
 		msg := <-receiveChan
+		//fmt.Println(msg.Response)
 		if msg.Response.ClientSeq == seq {
 			seq++
 			fmt.Println(msg.Response)
+			//fmt.Println("Skal egentlig printe dette også")
 		}
 		//fmt.Println("Melding fra server. Client ID: " + msg.Response.ClientID + ", client seq: " + fmt.Sprint(msg.Response.ClientSeq) + ", client command: " + msg.Response.Command)
 	}

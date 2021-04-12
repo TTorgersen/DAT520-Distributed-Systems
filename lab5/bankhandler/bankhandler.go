@@ -26,6 +26,22 @@ func NewBankHandler(responseChan chan<- mp.Response, proposer *mp.Proposer) *Ban
 	}
 }
 
+
+func (bh *BankHandler) SetBankAccounts(accounts map[int]bank.Account) {
+	bh.bankAccounts = accounts
+}
+
+func (bh *BankHandler) GetBankAccounts() map[int]bank.Account{
+	return bh.bankAccounts
+}
+
+
+func (bh *BankHandler) SetSlot(newSlot mp.SlotID) {
+	bh.adu = newSlot
+}
+
+
+
 // Function to handle decided value
 func (bh *BankHandler) HandleDecidedValue(dVal mp.DecidedValue) {
 	// If slot id for value is larger than adu+1 then buffer value

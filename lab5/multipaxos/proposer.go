@@ -106,7 +106,7 @@ func (p *Proposer) Start() {
 				p.nextSlot = p.adu + 1
 				p.acceptsOut.Init()
 				p.phaseOneDone = true
-				
+
 				fmt.Println("phase1 is true")
 				fmt.Println("quorum: ", p.quorum)
 				fmt.Println("Nr of nodes: ", p.n)
@@ -163,6 +163,13 @@ func (p *Proposer) Start() {
 func (p *Proposer) Stop() {
 	p.stop <- struct{}{}
 }
+
+
+func (p *Proposer) Phase1() bool {
+	return p.phaseOneDone
+}
+
+
 func (p *Proposer) Crnd() Round {
 	return p.crnd
 }
@@ -173,6 +180,15 @@ func (p *Proposer) Leader() int {
 func (p *Proposer) SetCrnd(newCrnd Round) {
 	p.crnd = newCrnd
 }
+
+func (p *Proposer) GetSlot() SlotID {
+	return p.adu
+}
+
+func (p *Proposer) SetSlot(newSlot SlotID) {
+	p.adu = newSlot
+}
+
 // DeliverPromise delivers promise prm to proposer p.
 func (p *Proposer) DeliverPromise(prm Promise) {
 	p.promiseIn <- prm

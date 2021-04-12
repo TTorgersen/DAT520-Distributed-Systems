@@ -2,10 +2,13 @@ package network
 
 import (
 	fd "dat520/lab3/failuredetector"
+	"dat520/lab5/bank"
 	mp "dat520/lab5/multipaxos"
+
 	"encoding/json"
 	"fmt"
 	"os"
+
 	//"log"
 	"net"
 	//"strconv"
@@ -63,10 +66,15 @@ type Message struct {
 	Response     mp.Response     //response msg
 	Decidedvalue mp.DecidedValue //decidedvalue
 	//Reconf       mp.Reconf
-	ClientIP  string       //client infor
-	Alive		bool  //should node be alive or not
-	Heartbeat fd.Heartbeat //heartbeat msg
-	Rnd 		mp.Round
+	ClientIP     string       //client infor
+	Alive        bool         //should node be alive or not
+	Heartbeat    fd.Heartbeat //heartbeat msg
+	Rnd          mp.Round
+	Adu          mp.SlotID
+	BankAccounts map[int]bank.Account
+	LrnSlots     map[mp.SlotID][]mp.Learn
+	LrnSent      map[mp.SlotID]bool
+	AccSlots	 []mp.PromiseSlot 
 }
 
 var Mutex = &sync.Mutex{}
@@ -88,8 +96,6 @@ func InitializeNetwork(nodes []Node, myself Node) (network Network) {
 	}
 	return network
 }
-
-
 
 // Start the server
 func (n *Network) StartServer() (err error) {
@@ -133,9 +139,14 @@ func (n *Network) StartServer() (err error) {
 }
 
 func (n *Network) Listen(conn *net.TCPConn) {
-	buffer := make([]byte, 1024, 1024)
+	nr := 4096
+	buffer := make([]byte, nr, nr)
 	for {
 		len, err := conn.Read(buffer[0:])
+		if len>= nr{
+			fmt.Println("Message len: ", len)
+		}
+		
 		if err != nil {
 			continue
 		}
@@ -167,19 +178,19 @@ func (n *Network) SendMessage(message Message) {
 	} else if connection, ok := n.Connections[message.To]; ok {
 		_, err = connection.Write(messageByte)
 		if err != nil {
-			fmt.Println("Closing connection from",message.To)
+			fmt.Println("Closing connection from", message.To)
 			connection.Close()
 			delete(n.Connections, message.To)
 		}
 	}
 	if message.Type == "Response" {
-		if connection, ok := n.ClientConnections[message.ClientIP]; ok{
-		_, err = connection.Write(messageByte)
-		if err != nil {
-			connection.Close()
-			delete(n.ClientConnections, message.ClientIP)
+		if connection, ok := n.ClientConnections[message.ClientIP]; ok {
+			_, err = connection.Write(messageByte)
+			if err != nil {
+				connection.Close()
+				delete(n.ClientConnections, message.ClientIP)
+			}
 		}
-	}
 	}
 }
 
@@ -191,8 +202,7 @@ func (n *Network) SendMessageBroadcast(message Message, destination []int) {
 	}
 }
 
-
-/* 
+/*
 //InitializeConnections will try to initiate connections with the servers
 //starting tcp server and initiate contact
 func (n *Network) InitializeConnections() (err error) {
@@ -203,7 +213,7 @@ func (n *Network) InitializeConnections() (err error) {
 				continue
 			} else {
 				n.Connections[node.ID] = TCPDial
-	
+
 				//fmt.Printf("Dial via tcp to node %v success\n", node.TCPaddr)
 			}
 			//CHANGE 7
@@ -252,7 +262,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
         if check(err) {
             return err
         }
-        
+
         n.RecieveChannel <- message
 	}
 	return nil
@@ -281,7 +291,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 			continue
 			//return err
 		}
-		// CHANGE 6 
+		// CHANGE 6
 		if message.Type != "Heartbeat"{
 		fmt.Println("MESSAGE SUCCESSFULLY RECIEVED, TYPE: ", message.Type)
 		}
@@ -289,7 +299,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 
 	}
 }
- 
+
 //Mutex to lock and unlock go routine
 var Mutex = &sync.Mutex{}
 
@@ -350,7 +360,7 @@ func (n *Network) StartServer() (err error) {
 				fmt.Println("Client connections", n.ClientConnections)
 				fmt.Println("Servers connections", n.Connections)
 			} else {
-				
+
 				Mutex.Lock()
 				n.Connections[NodeID] = TCPaccept
 				Mutex.Unlock()
@@ -392,7 +402,7 @@ func (n *Network) StartServer() (err error) {
 						if err != nil {
 							log.Print(err)
 						}
-					} 
+					}
 				case message.Type != "Response":
 					err := n.SendMessage(message)
 					if err != nil {
@@ -424,7 +434,7 @@ func (n *Network) SendMessage(message Message) (err error) {
 		n.RecieveChannel <- message
 		return nil
 	}
-	messageByte, err := json.Marshal(message) 
+	messageByte, err := json.Marshal(message)
 	if check(err) {
 		// CHANGE 3
 		fmt.Println("STRUGGLING TO MARSHALL MESSAGE", message)
@@ -457,4 +467,4 @@ func (n *Network) printNetwork() {
 	fmt.Printf("\n --Connection table for node %d--\n", n.Myself.ID)
 
 }
- */
+*/

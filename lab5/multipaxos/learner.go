@@ -46,6 +46,20 @@ func (l *Learner) Start() {
 	}()
 }
 
+func (l *Learner) GetLearnSent() map[SlotID]bool {
+	return l.lrnSent
+}
+func (l *Learner) GetLearnSlot() map[SlotID][]Learn {
+	return l.lrnSlots
+}
+
+func (l *Learner) SetLearnSent(lrnSnt map[SlotID]bool) {
+	l.lrnSent = lrnSnt
+}
+func (l *Learner) SetLearnSlot(lrnSlt map[SlotID][]Learn) {
+	l.lrnSlots = lrnSlt
+}
+
 // Stop stops l's main run loop.
 func (l *Learner) Stop() {
 	// TODO(student): distributed implementation

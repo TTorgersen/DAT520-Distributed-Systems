@@ -42,6 +42,16 @@ func NewAcceptor(id int, promiseOut chan<- Promise, learnOut chan<- Learn) *Acce
 	}
 }
 
+
+func (a *Acceptor) GetSlot()[]PromiseSlot{
+	return a.Slots
+}
+
+
+func (a *Acceptor) SetSlot(slot []PromiseSlot){
+	a.Slots = slot
+}
+
 // Start starts a's main run loop as a separate goroutine. The main run loop
 // handles incoming prepare and accept messages.
 func (a *Acceptor) Start() {
