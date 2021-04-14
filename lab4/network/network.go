@@ -50,6 +50,16 @@ type Message struct {
 	Value        mp.Value        //value msg
 	Response     mp.Response     //response msg
 	Decidedvalue mp.DecidedValue //decidedvalue
+	Msg			string
+	ReDirNode	int //clienthandler -> client
+	ClientInfo	ClientInfo //ClientID and such
+
+}
+
+type ClientInfo struct {
+	ClientID string
+	Conn *net.TCPConn
+	Addr string
 }
 
 //InitializeNetwork creates a empty network with channels ready
@@ -63,6 +73,7 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 	network = Network{
 		Nodes:          []Node{},
 		Connections:    map[int]*net.TCPConn{},
+		ClientConnections: []*net.TCPConn{},
 		RecieveChannel: reciveChann,
 		SendChannel:    sendChann,
 	}
@@ -71,7 +82,7 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 
 	for _, node := range nodes {
 		if node.ID == Myself {
-			//fmt.Printf("YOU are node number %v\n", node.ID)
+			fmt.Printf("YOU are node number %v\n", node.ID)
 			network.Myself = node
 			//address of myself
 			address := network.Myself.IP + ":" + strconv.Itoa(network.Myself.Port)
@@ -99,8 +110,10 @@ func InitializeNetwork(nodes []Node, Myself int) (network Network, err error) {
 func (n *Network) InitializeConnections() (err error) {
 	// we loop all nodes and try to dial them with dialTCP
 	for _, node := range n.Nodes {
+		fmt.Print("range nodes in int", n.Nodes)
 		TCPDial, err := net.DialTCP("tcp", nil, node.TCPaddr)
 		if check(err) {
+			log.Print(err)
 			continue
 		} else {
 			n.Connections[node.ID] = TCPDial
@@ -131,18 +144,25 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	defer n.CloseConn(TCPConnection)
 
 	buffer := make([]byte, 1024, 1024)
+
 	n.printNetwork()
 
 	//etarnal for loop to handle listening to connections
 	for {
 		len, _ := TCPConnection.Read(buffer[0:])
-		message := new(Message)
-		err = json.Unmarshal(buffer[0:len], &message)
-		if check(err) {
+		message2 := &Message{}
+		err = json.Unmarshal([]byte(buffer[:len]), message2)
+		//fmt.Println("stringen", *&message2.Learn)
+		message := *message2
+		//fmt.Println("received message over conn", TCPConnection, "  : ", *message)
+		if err != nil{
+			fmt.Println("error unmarshling listenforConn", message.From, message.Value.ClientSeq, len, "with message", message)
 			return err
 		}
-		n.RecieveChannel <- *message
-
+/* 		if message.Type != "Heartbeat" {
+			fmt.Println("not heartbeat", message.From, message.Value.ClientSeq, len)
+		} */
+		n.RecieveChannel <- message
 	}
 }
 
@@ -155,13 +175,19 @@ func (n *Network) CloseConn(TCPConnection *net.TCPConn) {
 	//fmt.Println("Network is closing the connection from", TCPConnection.RemoteAddr())
 
 	NodeID := n.findRemoteAdrress(TCPConnection)
+	if NodeID == -1 {
+		for i, cC := range n.ClientConnections{
+			if cC.RemoteAddr() == TCPConnection.RemoteAddr(){
+				n.ClientConnections = append(n.ClientConnections[:i], n.ClientConnections[i+1:]...)
+			}
+		}
+	}
 
 	// locks go routine to prevent errors
 	Mutex.Lock()
 	delete(n.Connections, NodeID)
 	Mutex.Unlock()
 
-	n.printNetwork()
 }
 
 //finds the node id based on the remote address it got in
@@ -187,7 +213,9 @@ func (n *Network) findRemoteAdrress(TCPConnection *net.TCPConn) (NodeID int) {
 func (n *Network) StartServer() (err error) {
 	TCPListn, err := net.ListenTCP("tcp", n.Myself.TCPaddr)
 	//fmt.Println("starting TCP server on node ", n.Myself.ID, n.Myself.TCPaddr)
-	check(err)
+	if err != nil {
+		return err
+	}
 	// sets this applications listening post
 	n.Myself.TCPListen = TCPListn
 
@@ -196,12 +224,34 @@ func (n *Network) StartServer() (err error) {
 		for {
 			//accepting a tcp call and returning a new connection
 			TCPaccept, err := TCPListn.AcceptTCP()
-			check(err)
+			if err != nil {
+				log.Print(err)
+			}
 
+			RemoteSocket := TCPaccept.RemoteAddr()
+			RemoteIPPort := strings.Split(RemoteSocket.String(), ":")
+			RemoteIP := RemoteIPPort[0]
+			client := true
 			// find out which node is sending it
-			NodeID := n.findRemoteAdrress(TCPaccept)
-			fmt.Println("NodeID is", NodeID)
-			if NodeID == -1 {
+			//NodeID := n.findRemoteAdrress(TCPaccept)
+			//fmt.Println("NodeID is", NodeID)
+			for _, node := range n.Nodes {
+				if node.IP == RemoteIP {
+					Mutex.Lock()
+					n.Connections[node.ID] = TCPaccept
+					Mutex.Unlock()
+					fmt.Println("Server tcp accepted from node", node.ID)
+					client = false
+				}
+			}
+			if client {
+				fmt.Println("A new client has connected")
+				fmt.Println("Client connections", n.ClientConnections)
+				fmt.Println("Servers connections", n.Connections)
+				n.ClientConnections = append(n.ClientConnections, TCPaccept)
+
+			}
+			/* if NodeID == -1 {
 				fmt.Println("A new client has connected")
 				fmt.Println("Client connections", n.ClientConnections)
 				fmt.Println("Servers connections", n.Connections)
@@ -211,7 +261,8 @@ func (n *Network) StartServer() (err error) {
 				n.Connections[NodeID] = TCPaccept
 				Mutex.Unlock()
 				//fmt.Println("Accepted TCP from node ", NodeID)
-			}
+			} */
+			fmt.Println("Clientlist", n.ClientConnections)
 			go n.ListenForConnection(TCPaccept)
 		}
 
@@ -235,6 +286,7 @@ func (n *Network) StartServer() (err error) {
 							fmt.Println("Failed writing VAL msg")
 							log.Print(err)
 						}
+						fmt.Println("Response sendt")
 					}
 				case message.Type != "Response":
 					err := n.SendMessage(message)
@@ -248,6 +300,20 @@ func (n *Network) StartServer() (err error) {
 
 	}()
 	return err
+}
+
+//printNetwork ...
+func (n *Network) printNetwork() {
+	fmt.Printf("-- Connection table for node: %d--\n\n", n.Myself.ID)
+	fmt.Printf("Node ID \t Local Address \t\t Remote address \n")
+	for nodeid, TCPconn := range n.Connections {
+		fmt.Printf("node %d\t%v\t %v\n", nodeid, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+	}
+	for i, TCPconn := range n.ClientConnections {
+		fmt.Printf("Client %d\t%v\t %v\n", i, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+	}
+	fmt.Printf("\n --Connection table for node %d--\n", n.Myself.ID)
+
 }
 
 //SendCommand to other modules
@@ -284,15 +350,17 @@ func (n *Network) SendMessage(message Message) (err error) {
 	}
 	messageByte, err := json.Marshal(message)
 	if check(err) {
+		fmt.Println("Error in send message Marshal")
 		return err
 	}
 	remoteConn := n.Connections[message.To]
 	if remoteConn == nil {
 		fmt.Println(n.Connections)
-		return fmt.Errorf("No connection to ", message.To)
+		return fmt.Errorf("No connection to %v", message.To)
 	}
 	_, err = n.Connections[message.To].Write(messageByte)
-	if check(err) {
+	if err != nil {
+		log.Print(err)
 		n.CloseConn(n.Connections[message.To])
 		return err
 	}

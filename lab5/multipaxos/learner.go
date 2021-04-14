@@ -1,6 +1,5 @@
 package multipaxos
 
-
 // Learner represents a learner as defined by the Multi-Paxos algorithm.
 type Learner struct { // TODO(student): algorithm and distributed implementation
 	// Add needed fields
@@ -45,6 +44,20 @@ func (l *Learner) Start() {
 			}
 		}
 	}()
+}
+
+func (l *Learner) GetLearnSent() map[SlotID]bool {
+	return l.lrnSent
+}
+func (l *Learner) GetLearnSlot() map[SlotID][]Learn {
+	return l.lrnSlots
+}
+
+func (l *Learner) SetLearnSent(lrnSnt map[SlotID]bool) {
+	l.lrnSent = lrnSnt
+}
+func (l *Learner) SetLearnSlot(lrnSlt map[SlotID][]Learn) {
+	l.lrnSlots = lrnSlt
 }
 
 // Stop stops l's main run loop.
@@ -98,5 +111,3 @@ func (l *Learner) handleLearn(learn Learn) (val Value, sid SlotID, output bool) 
 	}
 	return val, sid, false
 }
-
-// TODO(student): Add any other unexported methods needed.

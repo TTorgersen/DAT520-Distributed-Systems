@@ -2,8 +2,8 @@ package main
 
 import (
 	"bufio"
-	mp "dat520/lab4/multipaxos"
-	network "dat520/lab4/network"
+	mp "dat520/lab5/multipaxos"
+	network "dat520/lab5/network"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -77,16 +77,16 @@ func main() {
 				connections = dialUp(netconf, connections, thisClient, recieveEntireMessage)
 				continue
 			}
-			if len(text)>6{
-				if text[0:7] == "reconf "{
-					nrOfNewServers:= text[7:]
+			if len(text) > 6 {
+				if text[0:7] == "reconf " {
+					nrOfNewServers := text[7:]
 					fmt.Println("Reconfigure request received, new number of servers: ", nrOfNewServers)
-					msg := new(network.Message)
-					msg.Type = "reconf"
-					msg.Value.Command = nrOfNewServers
-					nrOfServers, _ = strconv.Atoi(nrOfNewServers)
-					recieveEntireMessage <- *msg 
-					continue
+					/* msg := new(network.Message)
+					msg.Value.Command = text
+					 *///nrOfServers, _ = strconv.Atoi(nrOfNewServers)
+					//recieveEntireMessage <- *msg
+
+					//continue
 				}
 			}
 			if text == "show seq" {
@@ -94,7 +94,7 @@ func main() {
 				continue
 			}
 			if text == "show stats" {
-				
+
 				fmt.Println("---------------------------------------------------------------- ")
 				fmt.Println("--------------------------This is the stats screen ------------- ")
 				fmt.Println("Current seq", seq)
@@ -124,6 +124,7 @@ func main() {
 				fmt.Println("-------------------------------retry connections --------------- ")
 				fmt.Println("-------------------------------reconf nrOfServers -------------- ")
 				fmt.Println("---------------------------------------------------------------- ")
+				continue
 			}
 			if text == "show connections" {
 				fmt.Println(connections)
@@ -137,6 +138,10 @@ func main() {
 					responseRecieved = false
 				} else {
 					fmt.Println("Command can not be entered as no response to previous command has arrived")
+					fmt.Println("CODECHANGE, SENT ANYWAY DUE TO DEBUGGING")
+					newVal := mp.Value{ClientID: thisClient, ClientSeq: seq,
+						Command: text}
+					CSend <- newVal
 				}
 
 			}
@@ -148,7 +153,8 @@ func main() {
 	go func() {
 		for {
 
-			if len(connections) < nrOfServers {
+			if len(connections) < nrOfServers-1 {
+				fmt.Println(len(connections), nrOfServers)
 
 				//go autoRetry(delay, netconf, connections, thisClient, recieveEntireMessage)
 
@@ -158,7 +164,7 @@ func main() {
 				connections = dialUp(netconf, connections, thisClient, recieveEntireMessage)
 				if len(connections) < nrOfServers {
 					fmt.Println("did not succeed to connect to all, doubling delay from ", delay, "to", delay*time.Duration(delaymultiplier))
-					delay += delay*time.Duration(delaymultiplier)
+					delay += delay * time.Duration(delaymultiplier)
 
 				}
 			}
@@ -173,7 +179,7 @@ func main() {
 			// HERE WE SEND TO SERVER
 		case msg := <-recieveEntireMessage:
 			//HERE WE RECIEVE
-			if msg.Type == "reconf"{
+			if msg.Type == "reconf" {
 				sendNetworkMessage(msg, connections)
 			}
 			if msg.Type == "Response" {
@@ -261,7 +267,7 @@ func dialUp(netconf network.Netconf, connections map[int]net.Conn, thisClient st
 
 func listenForConnectiontest(c net.Conn, rchan chan network.Message, connections map[int]net.Conn) (err error) {
 	defer c.Close()
-	buffer := make([]byte, 1024, 1024)
+	buffer := make([]byte, 2048, 2048)
 
 	for {
 		len, err := c.Read(buffer[0:])
@@ -276,37 +282,38 @@ func listenForConnectiontest(c net.Conn, rchan chan network.Message, connections
 			fmt.Print(err)
 			return err
 		}
-		msg := new(network.Message)
+		msg := network.Message{}
 		err = json.Unmarshal(buffer[0:len], &msg)
 		if err != nil {
 			fmt.Println(err)
 		}
-		rchan <- *msg
+		rchan <- msg
 	}
 
 }
 
-func sendNetworkMessage( msg network.Message, connections map[int]net.Conn) (err error){
+func sendNetworkMessage(msg network.Message, connections map[int]net.Conn) (err error) {
 	messageInBytes, err := json.Marshal(msg)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 	i := 0
-	for _, c := range connections{
+	for _, c := range connections {
 		bytes, err := c.Write(messageInBytes)
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
-		i ++
+		i++
 		_ = bytes
 	}
 	fmt.Println("Network message of type", msg.Type, " was sent to ", i, " connections")
 	return nil
 }
 func sendMessage(sendMsg mp.Value, connections map[int]net.Conn) (err error) {
-	msg := new(network.Message)
+	// changing new to other
+	msg := network.Message{}
 	msg.Type = "Value"
 	msg.Value = sendMsg
 	messageInBytes, err := json.Marshal(msg)

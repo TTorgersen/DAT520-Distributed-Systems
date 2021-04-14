@@ -98,7 +98,7 @@ func (p *Proposer) Start() {
 		for {
 			select {
 			case prm := <-p.promiseIn:
-				fmt.Println("Promise received")
+				//fmt.Println("Promise received")
 				accepts, output := p.handlePromise(prm)
 				if !output {
 					continue
@@ -106,7 +106,14 @@ func (p *Proposer) Start() {
 				p.nextSlot = p.adu + 1
 				p.acceptsOut.Init()
 				p.phaseOneDone = true
+
 				fmt.Println("phase1 is true")
+				fmt.Println("quorum: ", p.quorum)
+				fmt.Println("Nr of nodes: ", p.n)
+				fmt.Println("Current round: ", p.crnd)
+				fmt.Println("Output: ", output)
+				fmt.Println("Accepts: ", accepts)
+
 				for _, acc := range accepts {
 					p.acceptsOut.PushBack(acc)
 				}
@@ -131,13 +138,15 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case <-p.phaseOneProgressTicker.C:
-				fmt.Println("Got into the phase one chanel")
+				//fmt.Println("Got into the phase one chanel")
 				if p.id == p.leader && !p.phaseOneDone {
 					fmt.Println("Starting phase 1")
 					p.startPhaseOne()
 				}
 			case leader := <-trustMsgs:
 				fmt.Println("Leader got trust message")
+				fmt.Println("leader: ", leader)
+
 				p.leader = leader
 				if leader == p.id {
 					fmt.Println("Starting phase 1")
@@ -153,6 +162,31 @@ func (p *Proposer) Start() {
 // Stop stops p's main run loop.
 func (p *Proposer) Stop() {
 	p.stop <- struct{}{}
+}
+
+
+func (p *Proposer) Phase1() bool {
+	return p.phaseOneDone
+}
+
+
+func (p *Proposer) Crnd() Round {
+	return p.crnd
+}
+func (p *Proposer) Leader() int {
+	return p.leader
+}
+
+func (p *Proposer) SetCrnd(newCrnd Round) {
+	p.crnd = newCrnd
+}
+
+func (p *Proposer) GetSlot() SlotID {
+	return p.adu
+}
+
+func (p *Proposer) SetSlot(newSlot SlotID) {
+	p.adu = newSlot
 }
 
 // DeliverPromise delivers promise prm to proposer p.
@@ -276,7 +310,6 @@ func (p *Proposer) startPhaseOne() {
 func (p *Proposer) sendAccept() {
 	const alpha = 1
 	if !(p.nextSlot <= p.adu+alpha) {
-		fmt.Println("pri 0")
 		// We must wait for the next slot to be decided before we can
 		// send an accept.
 		//
@@ -290,7 +323,6 @@ func (p *Proposer) sendAccept() {
 	// Pri 1: If bounded by any accepts from Phase One -> send previously
 	// generated accept and return.
 	if p.acceptsOut.Len() > 0 {
-		fmt.Println("pri 1")
 		acc := p.acceptsOut.Front().Value.(Accept)
 		p.acceptsOut.Remove(p.acceptsOut.Front())
 		p.acceptOut <- acc
@@ -301,7 +333,6 @@ func (p *Proposer) sendAccept() {
 	// Pri 2: If any client request in queue -> generate and send
 	// accept.
 	if p.requestsIn.Len() > 0 {
-		fmt.Println("pri 2")
 		cval := p.requestsIn.Front().Value.(Value)
 		p.requestsIn.Remove(p.requestsIn.Front())
 		acc := Accept{
@@ -311,7 +342,6 @@ func (p *Proposer) sendAccept() {
 			Val:  cval,
 		}
 		p.nextSlot++
-		fmt.Printf("sending acc to acceptout")
 		p.acceptOut <- acc
 	}
 }

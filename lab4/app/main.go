@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
+	"os/signal"
+	"strings"
 	"time"
 )
 
@@ -26,8 +29,8 @@ var (
 	)
 	id = flag.Int(
 		"id",
-		0,
-		"Id of this process",
+		42, 
+		"id used", 
 	)
 	delay = flag.Int(
 		"delay",
@@ -67,23 +70,37 @@ func main() {
 
 	//1.3 Now netconf has the info from json file, step 1 complete
 	fmt.Println(netconf)
-
+	addr, _ := net.InterfaceAddrs()
+	fmt.Println("I AM IRON", addr, addr[1])
+	for _, conns := range netconf.Nodes{
+		addrrr := addr[1].String()
+		splitAddr := strings.Split(addrrr, "/")
+		if conns.IP == splitAddr[0]{
+			fmt.Println("testconn", conns.IP)
+			fmt.Println("splitted", splitAddr[0])
+			*id = conns.ID
+		} else {
+			fmt.Println("not it")
+		}
+		
+	}
 	// step 2: initialize a empty network with channels
 	thisNetwork, err := network.InitializeNetwork(netconf.Nodes, *id)
 	check(err)
-	fmt.Println(thisNetwork)
+	
+	fmt.Println(thisNetwork.Myself.ID)
 	// step 2.1: now we have a network with tcp endpoints, all nodes present
 
 	// step 3: Initialize LD
 
 	// step 3.1: in order to Init Leaderdetector we need a list of all nodes present
-	nodeIDList := []int{}
+	nodeIDList := []int{*id}  //prøve ut med *id i listen
 	for _, node := range thisNetwork.Nodes {
 		nodeIDList = append(nodeIDList, node.ID)
 	}
 
 	//as we dont have myself in the nodelist we need to append thatone too
-	nodeIDList = append(nodeIDList, thisNetwork.Myself.ID)
+	//nodeIDList = append(nodeIDList, thisNetwork.Myself.ID)
 
 	ld := detector.NewMonLeaderDetector(nodeIDList)
 
@@ -125,6 +142,9 @@ func main() {
 	ldchange := ld.Subscribe()
 	fmt.Println("Leader is", ld.Leader())
 	fd.Start()
+
+	done := make(chan os.Signal)
+	signal.Notify(done, os.Interrupt)
 	for {
 
 		select {
@@ -218,6 +238,15 @@ func main() {
 			case msg.Type == "Responce":
 				fmt.Println("Viiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii klllllllllllllllllllaaaaaaaaaaaaaaaaaaarteeeeeeeeeeeeeeeeeeeeee dettttttttttttttttttttttttttttttttttttttttt")
 			}
+		case <- done: 
+			proposer.Stop()
+			acceptor.Stop()
+			learner.Stop()
+			for _,tcpConn := range thisNetwork.Connections{
+				thisNetwork.CloseConn(tcpConn)
+			}
+
+			os.Exit(0)
 		}
 
 	}
