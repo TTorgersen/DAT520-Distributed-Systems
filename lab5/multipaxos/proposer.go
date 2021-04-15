@@ -119,7 +119,7 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case cval := <-p.cvalIn:
-				fmt.Println("Client value received in proposer")
+				//fmt.Println("Client value received in proposer")
 				if p.id != p.leader {
 					continue
 				}

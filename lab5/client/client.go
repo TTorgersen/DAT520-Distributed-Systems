@@ -18,6 +18,7 @@ import (
 var (
 	myID string
 	seq  = 0
+	automsg = false
 	//connections = make(map[string]*net.TCPConn)
 	//delay       = 3 * time.Second
 )
@@ -91,6 +92,10 @@ func main() {
 				leaderQ = true
 			}
 			if len(input) > 6 {
+				if input =="automsg"{
+					automsg = true
+					input = "deposit 100 1"
+				}
 
 				if leaderQ || input[0:7] == "reconf " {
 					//input = input[:len(input)-1]
@@ -157,6 +162,9 @@ func main() {
 		if msg.Response.ClientSeq == seq {
 			seq++
 			fmt.Println(msg.Response)
+			if automsg{
+				sendANewMsg(connections)
+			}
 			//fmt.Println("Skal egentlig printe dette også")
 		}
 		//fmt.Println("Melding fra server. Client ID: " + msg.Response.ClientID + ", client seq: " + fmt.Sprint(msg.Response.ClientSeq) + ", client command: " + msg.Response.Command)
@@ -207,6 +215,23 @@ func Listen(conn *net.TCPConn, receive chan network.Message) {
 		receive <- message
 	}
 }
+
+func sendANewMsg(connections map[int]*net.TCPConn){
+	input := "deposit 100 1"
+	val, err := inputToValue(input)
+
+				fmt.Println("sending normal val", val)
+				if err != nil {
+					fmt.Println(err)
+				}
+				valMsg := network.Message{
+					Type:  "Value",
+					Value: val,
+				}
+				SendMessage(connections, valMsg)
+
+}
+
 
 // Client send message to all network nodes
 func SendMessage(connections map[int]*net.TCPConn, message network.Message) {
