@@ -144,8 +144,7 @@ func (n *Network) ListenForConnection(TCPConnection *net.TCPConn) (err error) {
 	defer n.CloseConn(TCPConnection)
 
 	buffer := make([]byte, 1024, 1024)
-	/* nodeID := n.findRemoteAdrress(TCPConnection)
-	fmt.Println("listenForConn handle node", nodeID) */
+
 	n.printNetwork()
 
 	//etarnal for loop to handle listening to connections
@@ -188,7 +187,6 @@ func (n *Network) CloseConn(TCPConnection *net.TCPConn) {
 	Mutex.Lock()
 	delete(n.Connections, NodeID)
 	Mutex.Unlock()
-	n.printNetwork()
 
 }
 
@@ -328,6 +326,20 @@ func (n *Network) SendMessageBroadcast(message Message, destination []int) {
 			continue
 		}
 	}
+}
+
+//printNetwork ...
+func (n *Network) printNetwork() {
+	fmt.Printf("-- Connection table for node: %d--\n\n", n.Myself.ID)
+	fmt.Printf("Node ID \t Local Address \t\t Remote address \n")
+	for nodeid, TCPconn := range n.Connections {
+		fmt.Printf("node %d\t%v\t %v\n", nodeid, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+	}
+	for i, TCPconn := range n.ClientConnections {
+		fmt.Printf("Client %d\t%v\t %v\n", i, TCPconn.LocalAddr(), TCPconn.RemoteAddr())
+	}
+	fmt.Printf("\n --Connection table for node %d--\n", n.Myself.ID)
+
 }
 
 //SendMessage sends a message to the desired recipient
