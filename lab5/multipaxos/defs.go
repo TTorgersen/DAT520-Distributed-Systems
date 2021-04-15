@@ -32,6 +32,16 @@ const NoRound Round = -1
 // Noop: Boolen to indicate if this Value should be treated as a no-op.
 //
 // Msg: String message
+
+
+type ValueList struct{
+	ListOfRequests []Value
+	Noop bool
+	
+}
+
+
+
 type Value struct {
 	ClientID   string
 	ClientSeq  int
@@ -110,7 +120,7 @@ type Accept struct {
 	From int
 	Slot SlotID
 	Rnd  Round
-	Val  Value
+	Val  ValueList
 }
 
 // String returns a string representation of accept a.
@@ -123,7 +133,7 @@ type Learn struct {
 	From int
 	Slot SlotID
 	Rnd  Round
-	Val  Value
+	Val  ValueList
 }
 
 // String returns a string representation of learn l.
@@ -136,11 +146,15 @@ func (l Learn) String() string {
 type PromiseSlot struct {
 	ID   SlotID
 	Vrnd Round
-	Vval Value
+	Vval ValueList
 }
 
 // DecidedValue represents a value decided for a specific slot.
 type DecidedValue struct {
+	SlotID SlotID
+	Value  ValueList
+}
+type OneDecidedValue struct{
 	SlotID SlotID
 	Value  Value
 }
