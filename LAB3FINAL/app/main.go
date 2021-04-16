@@ -9,7 +9,7 @@ import (
 	"log"
 	"os"
 	"time"
-	mp "dat520/lab4/multipaxos"
+	//mp "dat520/lab4/multipaxos"
 )
 
 func main() {
@@ -72,7 +72,7 @@ func main() {
 	fd.Start()
 
 
-	rcvClient := make(chan mp.Value, 100)
+	//rcvClient := make(chan mp.Value, 100)
 	
 
 	for {

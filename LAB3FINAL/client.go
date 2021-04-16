@@ -83,7 +83,7 @@ func main() {
 					fmt.Println("Reconfigure request received, new number of servers: ", nrOfNewServers)
 					/* msg := new(network.Message)
 					msg.Value.Command = text
-					 *///nrOfServers, _ = strconv.Atoi(nrOfNewServers)
+					*/ //nrOfServers, _ = strconv.Atoi(nrOfNewServers)
 					//recieveEntireMessage <- *msg
 
 					//continue

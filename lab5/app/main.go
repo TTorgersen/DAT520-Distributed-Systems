@@ -511,6 +511,7 @@ func main() {
 						fmt.Println("Proposer slot ",proposer.GetSlot(), " Proposer round: ", proposer.Crnd())
 						fmt.Println("connections: ", len(thisNetwork.Connections))
 					} else {
+						//
 						fmt.Println("Deliver value from client to proposer", msg.Value)
 						proposer.DeliverClientValue(msg.Value)
 					}
