@@ -77,7 +77,7 @@ func (l *Learner) DeliverLearn(lrn Learn) {
 // corresponding decided value, then output will be true, sid the id for the
 // slot that was decided and val contain the decided value. If handleLearn
 // returns false as output, then val and sid will have their zero value.
-func (l *Learner) handleLearn(learn Learn) (val Value, sid SlotID, output bool) {
+func (l *Learner) handleLearn(learn Learn) (val ValueList, sid SlotID, output bool) {
 	// TODO(student): algorithm implementation
 	majority := (l.nrOfNodes / 2) + 1
 
