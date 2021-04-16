@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
 )
 
 // Proposer represents a proposer as defined by the Multi-Paxos algorithm.
@@ -33,7 +34,7 @@ type Proposer struct {
 	prepareOut chan<- Prepare
 	acceptOut  chan<- Accept
 	promiseIn  chan Promise
-	cvalIn     chan Value
+	cvalIn     chan ValueList
 
 	incDcd chan struct{}
 	stop   chan struct{}
@@ -41,7 +42,7 @@ type Proposer struct {
 
 type votedValues struct {
 	Vrnd Round
-	Vval Value
+	Vval ValueList
 }
 
 // NewProposer returns a new Multi-Paxos proposer. It takes the following
@@ -84,7 +85,7 @@ func NewProposer(id, nrOfNodes, adu int, ld detector.LeaderDetector, prepareOut 
 		prepareOut: prepareOut,
 		acceptOut:  acceptOut,
 		promiseIn:  make(chan Promise, 2000000),
-		cvalIn:     make(chan Value, 2000000),
+		cvalIn:     make(chan ValueList, 2000000),
 
 		incDcd: make(chan struct{}),
 		stop:   make(chan struct{}),
@@ -119,7 +120,7 @@ func (p *Proposer) Start() {
 				}
 				p.sendAccept()
 			case cval := <-p.cvalIn:
-				fmt.Println("Client value received in proposer")
+				//fmt.Println("Client value received in proposer")
 				if p.id != p.leader {
 					continue
 				}
@@ -195,7 +196,7 @@ func (p *Proposer) DeliverPromise(prm Promise) {
 }
 
 // DeliverClientValue delivers client value cval from to proposer p.
-func (p *Proposer) DeliverClientValue(cval Value) {
+func (p *Proposer) DeliverClientValue(cval ValueList) {
 	p.cvalIn <- cval
 }
 
@@ -279,7 +280,7 @@ func (p *Proposer) handlePromise(prm Promise) (accs []Accept, output bool) {
 	for i := 0; i < len(accs)-1; i++ {
 		for accs[i].Slot+1 != accs[i+1].Slot {
 			newID := accs[i].Slot + 1
-			noopaccept := Accept{From: p.id, Slot: newID, Rnd: p.crnd, Val: Value{Noop: true}}
+			noopaccept := Accept{From: p.id, Slot: newID, Rnd: p.crnd, Val: ValueList{Noop: true}}
 			accs = append(accs, Accept{})
 			copy(accs[i+2:], accs[i+1:])
 			accs[i+1] = noopaccept
@@ -333,7 +334,7 @@ func (p *Proposer) sendAccept() {
 	// Pri 2: If any client request in queue -> generate and send
 	// accept.
 	if p.requestsIn.Len() > 0 {
-		cval := p.requestsIn.Front().Value.(Value)
+		cval := p.requestsIn.Front().Value.(ValueList)
 		p.requestsIn.Remove(p.requestsIn.Front())
 		acc := Accept{
 			From: p.id,

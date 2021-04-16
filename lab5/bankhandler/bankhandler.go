@@ -3,13 +3,13 @@ package bankhandler
 import (
 	"dat520/lab5/bank"
 	mp "dat520/lab5/multipaxos"
-	"fmt"
+	//"fmt"
 )
 
 //bankLearner struct
 type BankHandler struct {
 	adu                mp.SlotID
-	bufferDecidedValue []mp.DecidedValue
+	bufferDecidedValue []mp.OneDecidedValue
 	bankAccounts       map[int]bank.Account
 	responseChanOut    chan<- mp.Response
 	proposer           *mp.Proposer
@@ -19,7 +19,7 @@ type BankHandler struct {
 func NewBankHandler(responseChan chan<- mp.Response, proposer *mp.Proposer) *BankHandler {
 	return &BankHandler{
 		adu:                -1,
-		bufferDecidedValue: []mp.DecidedValue{},
+		bufferDecidedValue: []mp.OneDecidedValue{},
 		bankAccounts:       map[int]bank.Account{},
 		responseChanOut:    responseChan,
 		proposer:           proposer,
@@ -43,16 +43,16 @@ func (bh *BankHandler) SetSlot(newSlot mp.SlotID) {
 
 
 // Function to handle decided value
-func (bh *BankHandler) HandleDecidedValue(dVal mp.DecidedValue) {
+func (bh *BankHandler) HandleDecidedValue(dVal mp.OneDecidedValue) {
 	// If slot id for value is larger than adu+1 then buffer value
-	fmt.Println("In bankhandler, SlotID: ", dVal.SlotID, " bh.adu+1 : ", bh.adu+1)
+	//fmt.Println("In bankhandler, SlotID: ", dVal.SlotID, " bh.adu+1 : ", bh.adu+1)
 	if dVal.SlotID > bh.adu+1 {
-		fmt.Println("In a empty return ")
+		//fmt.Println("In a empty return ")
 		bh.bufferDecidedValue = append(bh.bufferDecidedValue, dVal)
 		return
 	}
 	// If the value is not a no-op
-	fmt.Println("Dval.Value.noop", dVal.Value.Noop)
+	//fmt.Println("Dval.Value.noop", dVal.Value.Noop)
 	if dVal.Value.Noop == false {
 		// If account for account number in value is not found
 		accountNum := dVal.Value.AccountNum
