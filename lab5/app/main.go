@@ -429,7 +429,9 @@ func main() {
 
 		// message on network to on self
 		case msg := <-thisNetwork.RecieveChannel:
+			fmt.Println("recieved", msg.Type)
 			if msg.Type == "test" {
+				fmt.Println("commando", msg.Value.Command)
 				if (msg.Value.Command == "starttest") {
 					fmt.Println("Starting timer ...")
 					start = time.Now()

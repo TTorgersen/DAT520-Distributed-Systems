@@ -90,16 +90,14 @@ func main() {
 			//text, _ := reader.ReadString('\n')
 			input := scanner.Text()
 			leaderQ := false // COMMAND REQUIRES leader with Space after leader
-			if input == "leader " || input == "showhb " || input == "status"{
+			if input == "leader " || input == "showhb " {
 				leaderQ = true
 			}
 			if len(input) > 6 {
-				if input =="automsg"{
-					automsg = true
-					input = "deposit 100 1"
-				}
 
-				if leaderQ || input[0:7] == "reconf " {
+				
+
+				if leaderQ || strings.Compare(input[0:7],"reconf ") == 0 {
 					//input = input[:len(input)-1]
 					confNr := input[7:]
 					myVal := mp.Value{
@@ -117,7 +115,18 @@ func main() {
 					fmt.Println("Sending reconf msg", valMsg.Value)
 					SendMessage(connections, valMsg)
 					fmt.Println("Sending reconf msg", valMsg.Value.ClientID)
-				} else {
+				} else if strings.Compare("stoptest", input[0:8]) == 0{
+					fmt.Println("Starting test")
+					myVal3 := mp.Value{
+						Command: "stoptest",
+					}
+					testMsg := network.Message{
+						Type: "test", 
+						Value: myVal3,
+					}
+					SendMessage(connections, testMsg)
+				} else if strings.Compare("deposit ", input[0:8]) == 0 {
+					fmt.Println("im in")
 					val, err := inputToValue(input)
 
 					fmt.Println("sending normal val", val)
@@ -130,20 +139,52 @@ func main() {
 						Value: val,
 					}
 					SendMessage(connections, valMsg)
+					
+				}else if strings.Compare("starttest", input[0:9]) == 0{
+					fmt.Println("Starting test")
+					myVal2 := mp.Value{
+						Command: "starttest",
+					}
+					testMsg := network.Message{
+						Type: "test", 
+						Value: myVal2,
+					}
+					SendMessage(connections, testMsg)
+				
+				}else if strings.Compare("withdraw ", input[0:9]) == 0 {
+						fmt.Println("im in")
+						val, err := inputToValue(input)
+	
+						fmt.Println("sending normal val", val)
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
+						valMsg := network.Message{
+							Type:  "Value",
+							Value: val,
+						}
+						SendMessage(connections, valMsg)
+				} else {
+					fmt.Println("Invalid input.")
+					fmt.Println()
 				}
 			} else {
-				val, err := inputToValue(input)
+				fmt.Println("Invalid input.")
+				fmt.Println() /*  else {
+					val, err := inputToValue(input)
 
-				fmt.Println("sending normal val", val)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				valMsg := network.Message{
-					Type:  "Value",
-					Value: val,
-				}
-				SendMessage(connections, valMsg)
+					fmt.Println("sending normal val", val)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+					valMsg := network.Message{
+						Type:  "Value",
+						Value: val,
+					}
+					SendMessage(connections, valMsg)
+				} */
 			}
 		}
 		/*
