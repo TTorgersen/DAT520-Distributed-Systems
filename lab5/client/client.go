@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -32,6 +33,9 @@ func main() {
 	}
 	defer netconfigureFile.Close()
 
+	
+	RTT_timerList:= []float64{}
+	var RTT_timer time.Time
 	defaultNrOfServers := 3
 	fmt.Println("NrofServers, ", defaultNrOfServers)
 
@@ -127,6 +131,14 @@ func main() {
 						Type: "test", 
 						Value: myVal3,
 					}
+					averageRRT := 0.0
+					for _, e := range RTT_timerList{
+						averageRRT += e
+					}
+					averageRRT = averageRRT/float64(len(RTT_timerList))
+					averageRRT = averageRRT/1000000000
+					fmt.Println("Average RRT: ", averageRRT)
+					automsg = false
 					SendMessage(connections, testMsg)
 				} else if strings.Compare("deposit ", input[0:8]) == 0 {
 					fmt.Println("im in")
@@ -152,6 +164,7 @@ func main() {
 						Type: "test", 
 						Value: myVal2,
 					}
+					RTT_timer = time.Now()
 					SendMessage(connections, testMsg)
 				
 				}else if strings.Compare("withdraw ", input[0:9]) == 0 {
@@ -206,9 +219,14 @@ func main() {
 		msg := <-receiveChan
 		//fmt.Println(msg.Response)
 		if msg.Response.ClientSeq == seq {
+			elapsed := float64(time.Since(RTT_timer)/1000000000)
+			//avgReq := fmt.Sprintf("%.2f", elapsed)
+			RTT_timerList = append(RTT_timerList, elapsed)
+			
 			seq++
 			fmt.Println(msg.Response)
 			if automsg{
+				RTT_timer = time.Now()
 				sendANewMsg(connections)
 			}
 			//fmt.Println("Skal egentlig printe dette også")
