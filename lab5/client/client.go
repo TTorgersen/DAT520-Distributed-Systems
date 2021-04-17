@@ -95,7 +95,10 @@ func main() {
 			}
 			if len(input) > 6 {
 
-				
+				if input =="automsg"{
+					automsg = !automsg
+					input = "deposit 100 1"
+				}
 
 				if leaderQ || strings.Compare(input[0:7],"reconf ") == 0 {
 					//input = input[:len(input)-1]

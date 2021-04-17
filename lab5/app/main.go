@@ -66,7 +66,7 @@ func main() {
 	ValuesPrePaxos:= []mp.Value{}
 	batchingDelay := 500
 	ValuesPrePaxos = nil
-	completedPaxos := 0
+	completedPaxos := 0.0
 	var start time.Time
 	 
 	
@@ -375,7 +375,7 @@ func main() {
 						Value: decided,
 					}
 					//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(d.SlotID)+", and value: ", d.Value.String())
-					completedPaxos += 1
+					completedPaxos += 1.0
 					bankhandler.HandleDecidedValue(d)
 				}
 			} else {
@@ -385,7 +385,7 @@ func main() {
 				}
 				//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(decided.SlotID)+", and value: ", decided.Value.String())
 				//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(d.SlotID)+", and value: ", d.Value.String())
-				completedPaxos += 1
+				completedPaxos += 1.0
 				bankhandler.HandleDecidedValue(d)
 			}}
 		case response := <-responseOut:
@@ -429,7 +429,7 @@ func main() {
 
 		// message on network to on self
 		case msg := <-thisNetwork.RecieveChannel:
-			fmt.Println("recieved", msg.Type)
+			
 			if msg.Type == "test" {
 				fmt.Println("commando", msg.Value.Command)
 				if (msg.Value.Command == "starttest") {
@@ -438,9 +438,9 @@ func main() {
 					completedPaxos = 0
 				} 
 				if(msg.Value.Command == "stoptest"){
-					elapsed := time.Since(start)
+					elapsed := float64(time.Since(start)/1000000000)
 					fmt.Printf("Stopped test with %v seconds elapsed and %v tests executed.", elapsed, completedPaxos)
-					avgReq := completedPaxos / int(elapsed)
+					avgReq :=  fmt.Sprintf("the num %.2f", completedPaxos/elapsed)
 					fmt.Println("Resulting in ", avgReq, " per second.")
 				}	
 				
