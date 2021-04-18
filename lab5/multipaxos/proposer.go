@@ -38,6 +38,7 @@ type Proposer struct {
 
 	incDcd chan struct{}
 	stop   chan struct{}
+	alpha SlotID
 }
 
 type votedValues struct {
@@ -89,6 +90,7 @@ func NewProposer(id, nrOfNodes, adu int, ld detector.LeaderDetector, prepareOut 
 
 		incDcd: make(chan struct{}),
 		stop:   make(chan struct{}),
+		alpha: 5,
 	}
 }
 
@@ -309,40 +311,42 @@ func (p *Proposer) startPhaseOne() {
 // value from the client request queue if not empty. It does not send an accept
 // if the previous slot has not been decided yet.
 func (p *Proposer) sendAccept() {
-	const alpha = 1
-	if !(p.nextSlot <= p.adu+alpha) {
-		// We must wait for the next slot to be decided before we can
-		// send an accept.
-		//
-		// For Lab 6: Alpha has a value of one here. If you later
-		// implement pipelining then alpha should be extracted to a
-		// proposer variable (alpha) and this function should have an
-		// outer for loop.
-		return
-	}
+    var i SlotID
+    for i = 1; i <= p.alpha; i++ {
+        if !(p.nextSlot <= p.adu+p.alpha) {
+            // We must wait for the next slot to be decided before we can
+            // send an accept.
+            //
+            // For Lab 6: Alpha has a value of one here. If you later
+            // implement pipelining then alpha should be extracted to a
+            // proposer variable (alpha) and this function should have an
+            // outer for loop.
+            return
+        }
 
-	// Pri 1: If bounded by any accepts from Phase One -> send previously
-	// generated accept and return.
-	if p.acceptsOut.Len() > 0 {
-		acc := p.acceptsOut.Front().Value.(Accept)
-		p.acceptsOut.Remove(p.acceptsOut.Front())
-		p.acceptOut <- acc
-		p.nextSlot++
-		return
-	}
+        // Pri 1: If bounded by any accepts from Phase One -> send previously
+        // generated accept and return.
+        if p.acceptsOut.Len() > 0 {
+            acc := p.acceptsOut.Front().Value.(Accept)
+            p.acceptsOut.Remove(p.acceptsOut.Front())
+            p.acceptOut <- acc
+            p.nextSlot++
+            return
+        }
 
-	// Pri 2: If any client request in queue -> generate and send
-	// accept.
-	if p.requestsIn.Len() > 0 {
-		cval := p.requestsIn.Front().Value.(ValueList)
-		p.requestsIn.Remove(p.requestsIn.Front())
-		acc := Accept{
-			From: p.id,
-			Slot: p.nextSlot,
-			Rnd:  p.crnd,
-			Val:  cval,
-		}
-		p.nextSlot++
-		p.acceptOut <- acc
-	}
+        // Pri 2: If any client request in queue -> generate and send
+        // accept.
+        if p.requestsIn.Len() > 0 {
+            cval := p.requestsIn.Front().Value.(ValueList)
+            p.requestsIn.Remove(p.requestsIn.Front())
+            acc := Accept{
+                From: p.id,
+                Slot: p.nextSlot,
+                Rnd:  p.crnd,
+                Val:  cval,
+            }
+            p.nextSlot++
+            p.acceptOut <- acc
+        }
+    }
 }
