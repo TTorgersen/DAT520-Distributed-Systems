@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	myID string
-	seq  = 0
+	myID    string
+	seq     = 0
 	automsg = false
 	//connections = make(map[string]*net.TCPConn)
 	//delay       = 3 * time.Second
@@ -33,8 +33,7 @@ func main() {
 	}
 	defer netconfigureFile.Close()
 
-	
-	RTT_timerList:= []float64{}
+	RTT_timerList := []float64{}
 	var RTT_timer time.Time
 	defaultNrOfServers := 3
 	fmt.Println("NrofServers, ", defaultNrOfServers)
@@ -99,12 +98,12 @@ func main() {
 			}
 			if len(input) > 6 {
 
-				if input =="automsg"{
+				if input == "automsg" {
 					automsg = !automsg
 					input = "deposit 100 1"
 				}
 
-				if leaderQ || strings.Compare(input[0:7],"reconf ") == 0 {
+				if leaderQ || strings.Compare(input[0:7], "reconf ") == 0 {
 					//input = input[:len(input)-1]
 					confNr := input[7:]
 					myVal := mp.Value{
@@ -122,22 +121,27 @@ func main() {
 					fmt.Println("Sending reconf msg", valMsg.Value)
 					SendMessage(connections, valMsg)
 					fmt.Println("Sending reconf msg", valMsg.Value.ClientID)
-				} else if strings.Compare("stoptest", input[0:8]) == 0{
-					fmt.Println("Starting test")
+				} else if strings.Compare("stoptest", input[0:8]) == 0 {
+					fmt.Println("stopping test")
 					myVal3 := mp.Value{
 						Command: "stoptest",
 					}
 					testMsg := network.Message{
-						Type: "test", 
+						Type:  "test",
 						Value: myVal3,
 					}
 					averageRRT := 0.0
-					for _, e := range RTT_timerList{
+					RTT_timerList = RTT_timerList[1:]
+					fmt.Println("timelist", RTT_timerList)
+					for _, e := range RTT_timerList {
 						averageRRT += e
 					}
-					averageRRT = averageRRT/float64(len(RTT_timerList))
-					averageRRT = averageRRT/1000000000
+					
+					averageRRT = averageRRT / float64(len(RTT_timerList))
+					//averageRRT = averageRRT / 1000000000
 					fmt.Println("Average RRT: ", averageRRT)
+
+					RTT_timerList = []float64{}
 					automsg = false
 					SendMessage(connections, testMsg)
 				} else if strings.Compare("deposit ", input[0:8]) == 0 {
@@ -154,33 +158,35 @@ func main() {
 						Value: val,
 					}
 					SendMessage(connections, valMsg)
-					
-				}else if strings.Compare("starttest", input[0:9]) == 0{
+
+				} else if strings.Compare("starttest", input[0:9]) == 0 {
 					fmt.Println("Starting test")
+					//automsg = true
+					//sendANewMsg(connections)
 					myVal2 := mp.Value{
 						Command: "starttest",
 					}
 					testMsg := network.Message{
-						Type: "test", 
+						Type:  "test",
 						Value: myVal2,
 					}
 					RTT_timer = time.Now()
 					SendMessage(connections, testMsg)
-				
-				}else if strings.Compare("withdraw ", input[0:9]) == 0 {
-						fmt.Println("im in")
-						val, err := inputToValue(input)
-	
-						fmt.Println("sending normal val", val)
-						if err != nil {
-							fmt.Println(err)
-							continue
-						}
-						valMsg := network.Message{
-							Type:  "Value",
-							Value: val,
-						}
-						SendMessage(connections, valMsg)
+
+				} else if strings.Compare("withdraw ", input[0:9]) == 0 {
+					fmt.Println("im in")
+					val, err := inputToValue(input)
+
+					fmt.Println("sending normal val", val)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
+					valMsg := network.Message{
+						Type:  "Value",
+						Value: val,
+					}
+					SendMessage(connections, valMsg)
 				} else {
 					fmt.Println("Invalid input.")
 					fmt.Println()
@@ -214,18 +220,25 @@ func main() {
 			SendMessage(connections, valMsg)
 		} */
 	}()
+	if (myID == "152.94.1.107"){
+		fmt.Println("Load client sending 6 msg per second.")
+		go sendMsgs(2, connections)
+	} else {
+		fmt.Println("I am test client")
+	}
+	
 	for {
 
 		msg := <-receiveChan
 		//fmt.Println(msg.Response)
 		if msg.Response.ClientSeq == seq {
-			elapsed := float64(time.Since(RTT_timer)/1000000000)
+			elapsed := float64(time.Since(RTT_timer) / 1000000000)
 			//avgReq := fmt.Sprintf("%.2f", elapsed)
 			RTT_timerList = append(RTT_timerList, elapsed)
-			
+
 			seq++
 			fmt.Println(msg.Response)
-			if automsg{
+			if automsg {
 				RTT_timer = time.Now()
 				sendANewMsg(connections)
 			}
@@ -245,6 +258,12 @@ func GetOutboundIP() (net.IP, int) {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	return localAddr.IP, localAddr.Port
+}
+func sendMsgs(nrPerSecond int, connections map[int]*net.TCPConn) {
+	for {
+		time.Sleep(time.Second / time.Duration(nrPerSecond))
+		sendANewMsg(connections)
+	}
 }
 
 func Dial(addresses []string, receive chan network.Message) map[int]*net.TCPConn {
@@ -280,22 +299,21 @@ func Listen(conn *net.TCPConn, receive chan network.Message) {
 	}
 }
 
-func sendANewMsg(connections map[int]*net.TCPConn){
+func sendANewMsg(connections map[int]*net.TCPConn) {
 	input := "deposit 100 1"
 	val, err := inputToValue(input)
 
-				fmt.Println("sending normal val", val)
-				if err != nil {
-					fmt.Println(err)
-				}
-				valMsg := network.Message{
-					Type:  "Value",
-					Value: val,
-				}
-				SendMessage(connections, valMsg)
+	//fmt.Println("sending normal val", val)
+	if err != nil {
+		fmt.Println(err)
+	}
+	valMsg := network.Message{
+		Type:  "Value",
+		Value: val,
+	}
+	SendMessage(connections, valMsg)
 
 }
-
 
 // Client send message to all network nodes
 func SendMessage(connections map[int]*net.TCPConn, message network.Message) {
