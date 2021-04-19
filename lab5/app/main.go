@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	
 
 	//"log"
 	"net"
@@ -63,9 +62,13 @@ func main() {
 
 	alive := true
 	showHB := false
-	ValuesPrePaxos:= []mp.Value{}
-	batchingDelay := 10000
+
+	ValuesPrePaxos := []mp.Value{}
+	batchingDelay := 2000
 	ValuesPrePaxos = nil
+	completedPaxos := 0.0
+	var start time.Time
+
 	// step 1: get network configuration
 
 	//1.1 get network configuration file
@@ -73,7 +76,7 @@ func main() {
 	check(err)
 	defer netconfigureFile.Close()
 
-	defaultNrOfServers := 3
+	defaultNrOfServers := 5
 
 	//1.2 Read the network config file as byte array
 	byteVal, _ := ioutil.ReadAll(netconfigureFile)
@@ -135,7 +138,8 @@ func main() {
 			})
 		}
 	}
-	
+
+
 	// Initialize the network
 	thisNetwork := network.InitializeNetwork(nodes, selfNode)
 
@@ -196,7 +200,7 @@ func main() {
 		}
 		select {
 		case msg := <-thisNetwork.RecieveChannel:
-		//	fmt.Println("message recieved", msg.Type)
+
 
 			if msg.Type == "statusResponse" {
 				fmt.Println("status response recieved, defaultNrOfServers: ", msg.From)
@@ -205,23 +209,23 @@ func main() {
 				proposer.SetCrnd(msg.Rnd)
 				fmt.Println("Setting Adu proposer ", msg.Adu)
 				proposer.SetSlot(msg.Adu)
-				
+
 				fmt.Println("Setting Adu BH ", msg.Adu)
 				bankhandler.SetSlot(msg.Adu)
-				
+
 				fmt.Println("Setting Bank accounts ", msg.BankAccounts)
 				bankhandler.SetBankAccounts(msg.BankAccounts)
-				
+
 				fmt.Println("Setting Lrn slot ", msg.LrnSlots)
 				learner.SetLearnSlot(msg.LrnSlots)
-				
+
 				fmt.Println("Setting lrn sent ", msg.LrnSent)
 				learner.SetLearnSent(msg.LrnSent)
-				
+
 				fmt.Println("Setting acceptor slots")
 				fmt.Println("the slots", msg.AccSlots)
 				acceptor.SetSlot(msg.AccSlots)
-				
+
 				fmt.Println("Crnd Recieved: ", proposer.Crnd())
 				statusRecieved = true
 			}
@@ -254,28 +258,30 @@ func main() {
 		//go subscribePrinter(leaderdetector.Subscribe())
 	}
 	for {
-		
+
 		time.Sleep(100 * time.Millisecond)
-		
+
 		select {
 		case newL := <-ldchange:
 			if alive {
 				fmt.Println("new leader is ", newL)
 			}
-		// make heartbeat message and send to receiver
-	case  <- timerChan:
-		
-		if ValuesPrePaxos != nil && leaderdetector.CurrentLeader == thisNetwork.Myself.ID{
-		BatchList := mp.ValueList{
-			Noop: false,
-			ListOfRequests: ValuesPrePaxos,
-		}	
-		fmt.Println("", batchingDelay, " seconds has passed")
-		fmt.Println("Number of requests in queue: ", len(ValuesPrePaxos))
-		proposer.DeliverClientValue(BatchList)
-		ValuesPrePaxos = nil
-		}
-	case hb := <-hbSend:
+			// make heartbeat message and send to receiver
+		case <-timerChan:
+
+			if ValuesPrePaxos != nil && leaderdetector.CurrentLeader == thisNetwork.Myself.ID {
+				BatchList := mp.ValueList{
+					Noop:           false,
+					ListOfRequests: ValuesPrePaxos,
+				}
+				fmt.Println("", batchingDelay, " seconds has passed")
+				fmt.Println("Number of requests in queue: ", len(ValuesPrePaxos))
+
+				proposer.DeliverClientValue(BatchList)
+				ValuesPrePaxos = nil
+			}
+		case hb := <-hbSend:
+
 			hbMsg := network.Message{
 				Type:      "Heartbeat",
 				From:      hb.From,
@@ -325,62 +331,67 @@ func main() {
 		// make response message and send to client
 		case decidedList := <-decidedOut:
 			//fmt.Println("Paxos decided",decidedList)
-			for _, decided := range(decidedList.Value.ListOfRequests){
-			//		fmt.Println("This has been decided ", decided.Value)
-			if len(decided.ClientID) >= 6 {
+			for _, decided := range decidedList.Value.ListOfRequests {
+				//		fmt.Println("This has been decided ", decided.Value)
+				if len(decided.ClientID) >= 6 {
 
-				if decided.ClientID[0:7] == "reconf " {
+					if decided.ClientID[0:7] == "reconf " {
 
-					defaultNrOfServers, _ = strconv.Atoi(decided.ClientID[7:])
-					fmt.Println("Reconfigure request decided, Stopping servers, new number: ", defaultNrOfServers)
-					// WE MUST INCREMENT SLOT ANYWAYS
-					proposer.IncrementAllDecidedUpTo()
-					// THIS IS NEW
-					
-					learner.Stop()
-					proposer.Stop()
-					acceptor.Stop()
-					currL := leaderdetector.CurrentLeader
-					failuredetector.Stop()
-					alive = false // just testing for fun
-					rMsg := network.Message{
-						Type: "reconf",
-						From: defaultNrOfServers, 
-						Rnd:          proposer.Crnd(),
-						Adu:          proposer.GetSlot(),
-						BankAccounts: bankhandler.GetBankAccounts(),
-						LrnSlots:     learner.GetLearnSlot(),
-						LrnSent:      learner.GetLearnSent(),
-						AccSlots: acceptor.GetSlot(),
-						
-						//we just use "from " because it is int
-						// HER KAN VI OGSÅ SENDE CURRENT DATA
+						defaultNrOfServers, _ = strconv.Atoi(decided.ClientID[7:])
+						fmt.Println("Reconfigure request decided, Stopping servers, new number: ", defaultNrOfServers)
+						// WE MUST INCREMENT SLOT ANYWAYS
+						proposer.IncrementAllDecidedUpTo()
+						// THIS IS NEW
+
+						learner.Stop()
+						proposer.Stop()
+						acceptor.Stop()
+						currL := leaderdetector.CurrentLeader
+						failuredetector.Stop()
+						alive = false // just testing for fun
+						rMsg := network.Message{
+							Type:         "reconf",
+							From:         defaultNrOfServers,
+							Rnd:          proposer.Crnd(),
+							Adu:          proposer.GetSlot(),
+							BankAccounts: bankhandler.GetBankAccounts(),
+							LrnSlots:     learner.GetLearnSlot(),
+							LrnSent:      learner.GetLearnSent(),
+							AccSlots:     acceptor.GetSlot(),
+
+							//we just use "from " because it is int
+							// HER KAN VI OGSÅ SENDE CURRENT DATA
+						}
+						//fmt.Println("Sending a broadcast message to ", nodeIDList[:defaultNrOfServers])
+						if *id == currL {
+							thisNetwork.SendMessageBroadcast(rMsg, nodeIDList[:defaultNrOfServers])
+							fmt.Println("I am leader, I send reconf msg to servers")
+
+						}
+
+
+						continue
+					} else {
+						d := mp.OneDecidedValue{
+							SlotID: decidedList.SlotID,
+							Value:  decided,
+						}
+						//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(d.SlotID)+", and value: ", d.Value.String())
+						completedPaxos += 1.0
+						bankhandler.HandleDecidedValue(d)
 					}
-					//fmt.Println("Sending a broadcast message to ", nodeIDList[:defaultNrOfServers])
-					if *id == currL {
-						thisNetwork.SendMessageBroadcast(rMsg, nodeIDList[:defaultNrOfServers])
-						fmt.Println("I am leader, I send reconf msg to servers")
-
-					}
-
-					continue
 				} else {
 					d := mp.OneDecidedValue{
 						SlotID: decidedList.SlotID,
-						Value: decided,
+						Value:  decided,
 					}
+					//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(decided.SlotID)+", and value: ", decided.Value.String())
 					//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(d.SlotID)+", and value: ", d.Value.String())
+					completedPaxos += 1.0
 					bankhandler.HandleDecidedValue(d)
 				}
-			} else {
-				d := mp.OneDecidedValue{
-					SlotID: decidedList.SlotID,
-					Value: decided,
-				}
-				//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(decided.SlotID)+", and value: ", decided.Value.String())
-				//fmt.Println("Sends decided value to bankhandler with slotID "+fmt.Sprint(d.SlotID)+", and value: ", d.Value.String())
-				bankhandler.HandleDecidedValue(d)
-			}}
+			}
+
 		case response := <-responseOut:
 			//fmt.Println("A VALUE HAS BEEN DECIDED ",response)
 			resp := mp.Response{
@@ -422,6 +433,22 @@ func main() {
 
 		// message on network to on self
 		case msg := <-thisNetwork.RecieveChannel:
+
+			if msg.Type == "test" {
+				fmt.Println("commando", msg.Value.Command)
+				if msg.Value.Command == "starttest" {
+					fmt.Println("Starting timer ...")
+					start = time.Now()
+					completedPaxos = 0
+				}
+				if msg.Value.Command == "stoptest" {
+					elapsed := float64(time.Since(start) / 1000000000)
+					fmt.Printf("Stopped test with %v seconds elapsed and %v tests executed.", elapsed, completedPaxos)
+					avgReq := fmt.Sprintf("%.2f", completedPaxos/elapsed)
+					fmt.Println("Resulting in ", avgReq, " per second.")
+				}
+
+			}
 			if msg.Type == "statusUpdate" {
 				if *id == leaderdetector.CurrentLeader {
 					fmt.Println("Responding to statusUpdate")
@@ -434,7 +461,7 @@ func main() {
 						BankAccounts: bankhandler.GetBankAccounts(),
 						LrnSlots:     learner.GetLearnSlot(),
 						LrnSent:      learner.GetLearnSent(),
-						AccSlots: 	  acceptor.GetSlot()	,	
+						AccSlots:     acceptor.GetSlot(),
 					}
 					fmt.Println()
 					fmt.Println("Response message sent: ", responseMsg.Type, responseMsg.From, responseMsg.To, responseMsg.Rnd, responseMsg.BankAccounts, responseMsg.LrnSlots, responseMsg.LrnSent)
@@ -458,30 +485,27 @@ func main() {
 					proposer = mp.NewProposer(thisNetwork.Myself.ID, defaultNrOfServers, -1, leaderdetector, prepareOut, acceptOut)
 					acceptor = mp.NewAcceptor(thisNetwork.Myself.ID, promiseOut, learnOut)
 					bankhandler = bh.NewBankHandler(responseOut, proposer)
-					
-					
+
 					fmt.Println("Setting crnd ", msg.Rnd)
 					proposer.SetCrnd(msg.Rnd)
 					fmt.Println("Setting Adu proposer ", msg.Adu)
 					proposer.SetSlot(msg.Adu)
-					
+
 					fmt.Println("Setting Adu BH ", msg.Adu)
 					bankhandler.SetSlot(msg.Adu)
-					
+
 					fmt.Println("Setting Bank accounts ", msg.BankAccounts)
 					bankhandler.SetBankAccounts(msg.BankAccounts)
-					
+
 					fmt.Println("Setting Lrn slot ", msg.LrnSlots)
 					learner.SetLearnSlot(msg.LrnSlots)
-					
+
 					fmt.Println("Setting lrn sent ", msg.LrnSent)
 					learner.SetLearnSent(msg.LrnSent)
-					
+
 					fmt.Println("Setting acceptor slots")
 					acceptor.SetSlot(msg.AccSlots)
-					
-					
-					
+
 					proposer.Start()
 					acceptor.Start()
 					learner.Start()
@@ -512,13 +536,14 @@ func main() {
 				case msg.Type == "Prepare":
 					acceptor.DeliverPrepare(msg.Prepare)
 				case msg.Type == "Promise":
-				//	fmt.Println("Deliver promise to proposer")
+					//	fmt.Println("Deliver promise to proposer")
 					proposer.DeliverPromise(msg.Promise)
 				case msg.Type == "Accept":
-				//	fmt.Println("Deliver accept to acceptor")
+					//	fmt.Println("Deliver accept to acceptor")
 					acceptor.DeliverAccept(msg.Accept)
 				case msg.Type == "Learn":
-				//	fmt.Println("Deliver learn to learner")
+					//	fmt.Println("Deliver learn to learner")
+
 					learner.DeliverLearn(msg.Learn)
 				case msg.Type == "Value":
 
@@ -532,11 +557,12 @@ func main() {
 
 					} else if msg.Value.ClientID == "status" {
 						fmt.Println("Phase1 done?: ", proposer.Phase1())
-						fmt.Println("Proposer slot ",proposer.GetSlot(), " Proposer round: ", proposer.Crnd())
+						fmt.Println("Proposer slot ", proposer.GetSlot(), " Proposer round: ", proposer.Crnd())
 						fmt.Println("connections: ", len(thisNetwork.Connections))
 					} else {
-					//	fmt.Println("Deliver value from client to proposer", msg.Value)
-					// her samle requests
+						//	fmt.Println("Deliver value from client to proposer", msg.Value)
+						// her samle requests
+
 
 						ValuesPrePaxos = append(ValuesPrePaxos, msg.Value)
 						//proposer.DeliverClientValue(msg.Value)
@@ -562,13 +588,15 @@ func check(err error) {
 	}
 }
 
-func startTimer(t int, timerChan chan struct{}){
+func startTimer(t int, timerChan chan struct{}) {
 	timer := time.NewTimer(time.Duration(t) * time.Millisecond)
-	<- timer.C
+	<-timer.C
 	timerChan <- struct{}{}
 	startTimer(t, timerChan)
-	
+
 }
+
+
 /*
 	if alive {
 		//start multiPax  // CHANGE JEG GJØR EN ENDRING commenter out dette fjerner multipaxos hypotese

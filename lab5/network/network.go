@@ -140,7 +140,7 @@ func (n *Network) StartServer() (err error) {
 
 func (n *Network) Listen(conn *net.TCPConn) {
 	// BUFFER CAPASITY IS THE WEAK LINK
-	nr := 20000
+	nr := 20000000
 	buffer := make([]byte, nr, nr)
 	for {
 		len, err := conn.Read(buffer[0:])
