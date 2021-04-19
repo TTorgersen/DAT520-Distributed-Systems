@@ -75,7 +75,7 @@ func main() {
 	check(err)
 	defer netconfigureFile.Close()
 
-	defaultNrOfServers := 3
+	defaultNrOfServers := 5
 
 	//1.2 Read the network config file as byte array
 	byteVal, _ := ioutil.ReadAll(netconfigureFile)
