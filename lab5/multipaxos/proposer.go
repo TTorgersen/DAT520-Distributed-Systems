@@ -350,3 +350,4 @@ func (p *Proposer) sendAccept() {
         }
     }
 }
+

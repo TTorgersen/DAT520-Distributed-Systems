@@ -62,6 +62,7 @@ func main() {
 
 	alive := true
 	showHB := false
+
 	ValuesPrePaxos := []mp.Value{}
 	batchingDelay := 2000
 	ValuesPrePaxos = nil
@@ -138,8 +139,10 @@ func main() {
 		}
 	}
 
+
 	// Initialize the network
 	thisNetwork := network.InitializeNetwork(nodes, selfNode)
+
 
 	nodeIDList := []int{*id}
 	for _, node := range thisNetwork.Nodes {
@@ -197,7 +200,7 @@ func main() {
 		}
 		select {
 		case msg := <-thisNetwork.RecieveChannel:
-			//	fmt.Println("message recieved", msg.Type)
+
 
 			if msg.Type == "statusResponse" {
 				fmt.Println("status response recieved, defaultNrOfServers: ", msg.From)
@@ -278,6 +281,7 @@ func main() {
 				ValuesPrePaxos = nil
 			}
 		case hb := <-hbSend:
+
 			hbMsg := network.Message{
 				Type:      "Heartbeat",
 				From:      hb.From,
@@ -365,6 +369,7 @@ func main() {
 
 						}
 
+
 						continue
 					} else {
 						d := mp.OneDecidedValue{
@@ -386,6 +391,7 @@ func main() {
 					bankhandler.HandleDecidedValue(d)
 				}
 			}
+
 		case response := <-responseOut:
 			//fmt.Println("A VALUE HAS BEEN DECIDED ",response)
 			resp := mp.Response{
@@ -537,6 +543,7 @@ func main() {
 					acceptor.DeliverAccept(msg.Accept)
 				case msg.Type == "Learn":
 					//	fmt.Println("Deliver learn to learner")
+
 					learner.DeliverLearn(msg.Learn)
 				case msg.Type == "Value":
 
@@ -555,6 +562,7 @@ func main() {
 					} else {
 						//	fmt.Println("Deliver value from client to proposer", msg.Value)
 						// her samle requests
+
 
 						ValuesPrePaxos = append(ValuesPrePaxos, msg.Value)
 						//proposer.DeliverClientValue(msg.Value)
@@ -587,6 +595,7 @@ func startTimer(t int, timerChan chan struct{}) {
 	startTimer(t, timerChan)
 
 }
+
 
 /*
 	if alive {

@@ -19,6 +19,7 @@ import (
 var (
 	myID    string
 	seq     = 0
+
 	automsg = false
 	//connections = make(map[string]*net.TCPConn)
 	//delay       = 3 * time.Second
@@ -97,6 +98,10 @@ func main() {
 				leaderQ = true
 			}
 			if len(input) > 6 {
+				if input =="automsg"{
+					automsg = true
+					input = "deposit 100 1"
+				}
 
 				if input == "automsg" {
 					automsg = !automsg
@@ -240,6 +245,7 @@ func main() {
 			fmt.Println(msg.Response)
 			if automsg {
 				RTT_timer = time.Now()
+
 				sendANewMsg(connections)
 			}
 			//fmt.Println("Skal egentlig printe dette også")
@@ -314,6 +320,7 @@ func sendANewMsg(connections map[int]*net.TCPConn) {
 	SendMessage(connections, valMsg)
 
 }
+
 
 // Client send message to all network nodes
 func SendMessage(connections map[int]*net.TCPConn, message network.Message) {
